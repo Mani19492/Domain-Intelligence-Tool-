@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Domain Intelligence Tool for analyzing WHOIS data, subdomains, security, and network insights.">
+    <meta name="author" content="Domain Intelligence Team">
+    <title>Domain Intelligence Tool</title>
+
+    <!-- CSS FILES -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@500;600;700;900&family=Open+Sans&display=swap" rel="stylesheet">
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/templatemo-topic-listing.css" rel="stylesheet">
+
+    <!-- Vis.js for graph visualization -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+    <!-- Inline CSS for Critical Mass font and report styling -->
+    <style>
+        @font-face {
+            font-family: 'Critical Mass';
+            src: url('/static/fonts/critical-mass-ldr.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        body {
+            background-color: #f8f9fa;
+        }
+        .report-section {
+            margin-bottom: 40px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .report-section h3 {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .report-section ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .report-section ul li {
+            margin-bottom: 10px;
+            color: #555;
+        }
+        .report-section table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+        .report-section table th,
+        .report-section table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .report-section table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            color: #333;
+        }
+        .report-section table td {
+            word-break: break-word;
+        }
+        .loading {
+            text-align: center;
+            font-size: 1.2em;
+            margin: 50px 0;
+            color: #666;
+        }
+        .error {
+            color: red;
+            text-align: center;
+            font-size: 1.2em;
+            margin: 50px 0;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .hero-section {
+            background-color: #060606 !important;
+            min-height: 80vh;
+        }
+        .container {
+            background-color: transparent;
+        }
+        .custom-block {
+            transition: transform 0.3s;
+        }
+        .custom-block:hover {
+            transform: translateY(-5px);
+        }
+        @media (max-width: 768px) {
+            .report-section table {
+                font-size: 0.8em;
+            }
+            .report-section table th,
+            .report-section table td {
+                padding: 6px;
+            }
+        }
+        .wayback-image {
+            max-width: 100px;
+            height: auto;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body id="top">
+    <main>
+        <nav class="navbar navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand" href="/">
+                    <img src="/static/images/logo/domain.png" alt="Domain Intelligence Tool Logo" class="logo-img" style="height: 60px; width: auto; vertical-align: middle; margin-right: 10px;">
+                    <span style="font-size: 0.8em;">Domain Intelligence Tool</span>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-lg-5 me-lg-auto">
+                        <li class="nav-item">
+                            <a class="nav-link click-scroll" href="#section_1">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link click-scroll" href="#section_2">Domain Insights</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link click-scroll" href="#section_3">How It Works</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/logout">Sign Out</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <section class="hero-section d-flex justify-content-center align-items-center" id="section_1">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-8 col-12 mx-auto">
+                        <h1 class="text-white text-center">Domain Intelligence Tool</h1>
+                        <h6 class="text-center text-white">Comprehensive analysis of domains with WHOIS, subdomain, security, and network insights.</h6>
+                        <form method="get" class="custom-form mt-4 pt-2 mb-lg-0 mb-5" role="search" id="domainSearchForm">
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bi-search" id="basic-addon1"></span>
+                                <input name="domain" type="search" class="form-control" id="domainInput" placeholder="Enter domain (e.g., example.com)" aria-label="Search">
+                                <button type="submit" class="form-control">Analyze</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="featured-section">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-lg-4 col-12 mb-4 mb-lg-0">
+                        <div class="custom-block bg-white shadow-lg">
+                            <a href="#section_2">
+                                <div class="d-flex">
+                                    <div>
+                                        <h5 class="mb-2">WHOIS Analysis</h5>
+                                        <p class="mb-0">Access detailed domain ownership, registrar, and registration data instantly.</p>
+                                    </div>
+                                </div>
+                                <img src="/static/images/topics/image-removebg-preview (6).png" class="custom-block-image img-fluid" alt="WHOIS Analysis" style="height: 290px; width: auto; vertical-align: middle;">
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 col-12">
+                        <div class="custom-block custom-block-overlay">
+                            <div class="d-flex flex-column h-100">
+                                <img src="/static/images/topics/Domain Ownership.png" class="custom-block-image img-fluid" alt="Security Insights">
+                                <div class="custom-block-overlay-text d-flex">
+                                    <div>
+                                        <h5 class="text-white mb-2">Security Insights</h5>
+                                        <p class="text-white">Evaluate SSL certificates, security headers, and vulnerabilities for any domain.</p>
+                                        <a href="#section_2" class="btn custom-btn mt-2 mt-lg-3">Learn More</a>
+                                    </div>
+                                </div>
+                                <div class="social-share d-flex">
+                                    <p class="text-white me-4">Share:</p>
+                                    <ul class="social-icon">
+                                        <li class="social-icon-item">
+                                            <a href="https://twitter.com/intent/tweet?text=Check%20out%20this%20Domain%20Intelligence%20Tool!" class="social-icon-link bi-twitter"></a>
+                                        </li>
+                                        <li class="social-icon-item">
+                                            <a href="https://www.facebook.com/sharer/sharer.php?u=https://yourdomain.com" class="social-icon-link bi-facebook"></a>
+                                        </li>
+                                        <li class="social-icon-item">
+                                            <a href="https://www.linkedin.com/shareArticle?mini=true&url=https://yourdomain.com" class="social-icon-link bi-linkedin"></a>
+                                        </li>
+                                    </ul>
+                                    <a href="#" class="custom-icon bi-bookmark ms-auto"></a>
+                                </div>
+                                <div class="section-overlay"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="explore-section section-padding" id="section_2">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12 text-center">
+                        <h2 class="mb-4">Explore Domain Insights</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="container-fluid">
+                <div class="row">
+                    <ul class="nav nav-tabs" id="myTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="whois-tab" data-bs-toggle="tab" data-bs-target="#whois-tab-pane" type="button" role="tab" aria-controls="whois-tab-pane" aria-selected="true">WHOIS Data</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="subdomains-tab" data-bs-toggle="tab" data-bs-target="#subdomains-tab-pane" type="button" role="tab" aria-controls="subdomains-tab-pane" aria-selected="false">Subdomains</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security-tab-pane" type="button" role="tab" aria-controls="security-tab-pane" aria-selected="false">Security</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="network-tab" data-bs-toggle="tab" data-bs-target="#network-tab-pane" type="button" role="tab" aria-controls="network-tab-pane" aria-selected="false">Network Analysis</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="technologies-tab" data-bs-toggle="tab" data-bs-target="#technologies-tab-pane" type="button" role="tab" aria-controls="technologies-tab-pane" aria-selected="false">Technologies</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="tab-content" id="myTabContent">
+                            <div class="tab-pane fade show active" id="whois-tab-pane" role="tabpanel" aria-labelledby="whois-tab" tabindex="0">
+                                <div class="row">
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-0">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Domain Ownership</h5>
+                                                        <p class="mb-0">Access registrant, admin, and contact details.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Domain Ownership.png" class="custom-block-image img-fluid" alt="Domain Ownership" style="height: 200px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-0">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Registrar Info</h5>
+                                                        <p class="mb-0">View registrar details and domain status.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Registrar Info.png" class="custom-block-image img-fluid" alt="Registrar Info" style="height: 280px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Registration Dates</h5>
+                                                        <p class="mb-0">Check creation, update, and expiration dates.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Registration Dates.png" class="custom-block-image img-fluid" alt="Registration Dates" style="height: 260px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="subdomains-tab-pane" role="tabpanel" aria-labelledby="subdomains-tab" tabindex="0">
+                                <div class="row">
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-3">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Active Subdomains</h5>
+                                                        <p class="mb-0">Discover all active subdomains for a domain.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Active Subdomains.png" class="custom-block-image img-fluid" alt="Active Subdomains" style="height: 260px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-3">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Subdomain Activity</h5>
+                                                        <p class="mb-0">Monitor recent changes and subdomain activity.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Subdomain Activity.png" class="custom-block-image img-fluid" alt="Subdomain Activity" style="height: 260px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Subdomain Mapping</h5>
+                                                        <p class="mb-0">Map subdomains to their IP addresses.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Subdomain Mapping.png" class="custom-block-image img-fluid" alt="Subdomain Mapping" style="height: 260px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="security-tab-pane" role="tabpanel" aria-labelledby="security-tab" tabindex="0">
+                                <div class="row">
+                                    <div class="col-lg-6 col-md-6 col-12 mb-4 mb-lg-0">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">SSL Certificates</h5>
+                                                        <p class="mb-0">Review SSL/TLS certificate details and validity.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/SSL Certificates.png" class="custom-block-image img-fluid" alt="SSL Certificates" style="height: 280px; width: auto; vertical-align: middle; margin-left: 100px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-6 col-md-6 col-12">
+                                        <div class="custom-block custom-block-overlay">
+                                            <div class="d-flex flex-column h-100">
+                                                <img src="/static/images/topics/Security Headers.png" class="custom-block-image img-fluid" alt="Security Analysis" style="height: 260px; width: auto; vertical-align: middle; margin-top: 32.8%;">
+                                                <div class="custom-block-overlay-text d-flex">
+                                                    <div>
+                                                        <h5 class="text-white mb-2">Security Headers</h5>
+                                                        <p class="text-white">Check HTTP headers like CSP, HSTS, and X-Frame-Options.</p>
+                                                        <a href="#section_2" class="btn custom-btn mt-2 mt-lg-3">Learn More</a>
+                                                    </div>
+                                                </div>
+                                                <div class="social-share d-flex">
+                                                    <p class="text-white me-4">Share:</p>
+                                                    <ul class="social-icon">
+                                                        <li class="social-icon-item">
+                                                            <a href="https://twitter.com/intent/tweet?text=Check%20out%20this%20Domain%20Intelligence%20Tool!" class="social-icon-link bi-twitter"></a>
+                                                        </li>
+                                                        <li class="social-icon-item">
+                                                            <a href="https://www.facebook.com/sharer/sharer.php?u=https://yourdomain.com" class="social-icon-link bi-facebook"></a>
+                                                        </li>
+                                                        <li class="social-icon-item">
+                                                            <a href="https://www.linkedin.com/shareArticle?mini=true&url=https://yourdomain.com" class="social-icon-link bi-linkedin"></a>
+                                                        </li>
+                                                    </ul>
+                                                    <a href="#" class="custom-icon bi-bookmark ms-auto"></a>
+                                                </div>
+                                                <div class="section-overlay"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="network-tab-pane" role="tabpanel" aria-labelledby="network-tab" tabindex="0">
+                                <div class="row">
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-3">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">DNS Records</h5>
+                                                        <p class="mb-0">Explore A, MX, TXT, and other DNS records.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/DNS Records.png" class="custom-block-image img-fluid" alt="DNS Records">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-3">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Traceroute</h5>
+                                                        <p class="mb-0">Analyze network paths and latency.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Traceroute.png" class="custom-block-image img-fluid" alt="Traceroute" style="height: 180px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Open Ports</h5>
+                                                        <p class="mb-0">Identify open ports and running services.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Open Ports.png" class="custom-block-image img-fluid" alt="Open Ports">
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="technologies-tab-pane" role="tabpanel" aria-labelledby="technologies-tab" tabindex="0">
+                                <div class="row">
+                                    <div class="col-lg-6 col-md-6 col-12 mb-4 mb-lg-3">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Web Technologies</h5>
+                                                        <p class="mb-0">Detect CMS, frameworks, and libraries in use.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Web Technologies.png" class="custom-block-image img-fluid" alt="Web Technologies">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-6 col-md-6 col-12">
+                                        <div class="custom-block bg-white shadow-lg">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Server Software</h5>
+                                                        <p class="mb-0">Identify server software and version details.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Server Software.png" class="custom-block-image img-fluid" alt="Server Software" style="height: 260px; width: auto; vertical-align: middle; margin-right: 10px; margin-left: 60px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="timeline-section section-padding" id="section_3">
+            <div class="section-overlay"></div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-12 text-center">
+                        <h2 class="text-white mb-3">How Domain Intelligence Works</h2>
+                    </div>
+                    <div class="col-lg-10 col-12 mx-auto">
+                        <div class="timeline-container">
+                            <ul class="vertical-scrollable-timeline" id="vertical-vertical-timeline">
+                                <div class="list-progress">
+                                    <div class="inner"></div>
+                                </div>
+                                <li>
+                                    <h4 class="text-white mb-3">Enter a Domain</h4>
+                                    <p class="text-white">Input any domain name into our search bar to begin analyzing its details.</p>
+                                    <div class="icon-holder">
+                                        <i class="bi bi-search"></i>
+                                    </div>
+                                </li>
+                                <li>
+                                    <h4 class="text-white mb-3">Review Insights</h4>
+                                    <p class="text-white">Access comprehensive reports on WHOIS, subdomains, security, and network data.</p>
+                                    <div class="icon-holder">
+                                        <i class="bi bi-eye"></i>
+                                    </div>
+                                </li>
+                                <li>
+                                    <h4 class="text-white mb-3">Take Action</h4>
+                                    <p class="text-white">Use insights for cybersecurity, compliance, or competitive analysis.</p>
+                                    <div class="icon-holder">
+                                        <i class="bi bi-gear"></i>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- JAVASCRIPT -->
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/jquery.sticky.js"></script>
+    <script src="/static/js/click-scroll.js"></script>
+    <script src="/static/js/custom.js"></script>
+    <script>
+        // Validate domain input
+        function isValidDomain(domain) {
+            const domainRegex = /^(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})$/;
+            return domainRegex.test(domain);
+        }
+
+        // Handle form submission
+        document.getElementById('domainSearchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const domainInput = document.getElementById('domainInput');
+            const domain = domainInput.value.trim().toLowerCase();
+            if (!domain) {
+                alert('Please enter a domain to analyze.');
+                return;
+            }
+            if (!isValidDomain(domain)) {
+                alert('Please enter a valid domain (e.g., example.com).');
+                return;
+            }
+            try {
+                // Show loading message
+                const main = document.querySelector('main');
+                main.innerHTML = `
+                    <div class="loading">Loading analysis data for ${domain}...</div>
+                `;
+                // Fetch data from API
+                const response = await fetch(`/api/domain/${encodeURIComponent(domain)}`, {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch data: HTTP ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                // Update URL to report route
+                history.pushState(null, '', `/report/${encodeURIComponent(domain)}`);
+                // Display report
+                displayReport(data);
+            } catch (error) {
+                console.error('Error:', error);
+                const main = document.querySelector('main');
+                main.innerHTML = `
+                    <div class="error">Error: ${error.message || 'Unable to fetch domain data. Please try again later.'}</div>
+                `;
+            }
+        });
+
+        // Function to safely render data
+        function safeRender(value) {
+            if (value == null) return 'N/A';
+            return String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // Function to display report data
+        function displayReport(data) {
+            const main = document.querySelector('main');
+            main.innerHTML = `
+                <nav class="navbar navbar-expand-lg">
+                    <div class="container">
+                        <a class="navbar-brand" href="/">
+                            <img src="/static/images/logo/domain.png" alt="Domain Intelligence Tool Logo" class="logo-img" style="height: 60px; width: auto; vertical-align: middle; margin-right: 10px;">
+                            <span style="font-size: 0.8em;">Domain Intelligence Tool</span>
+                        </a>
+                        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                            <span class="navbar-toggler-icon"></span>
+                        </button>
+                        <div class="collapse navbar-collapse" id="navbarNav">
+                            <ul class="navbar-nav ms-lg-5 me-lg-auto">
+                                <li class="nav-item">
+                                    <a class="nav-link" href="/#section_1">Home</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="/#section_2">Domain Insights</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="/#section_3">How It Works</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="/logout">Sign Out</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+                <section class="report-section" id="report">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-12">
+                                <h1 class="text-center mb-4">Domain Analysis Report for ${safeRender(data.domain)}</h1>
+                                <div id="reportContent">
+                                    <!-- Domain Status -->
+                                    <div class="report-section">
+                                        <h3>Domain Status</h3>
+                                        <table id="statusTable">
+                                            <tr><th>Field</th><th>Value</th></tr>
+                                            <tr><td>Domain</td><td>${safeRender(data.domain)}</td></tr>
+                                            <tr><td>Is Taken</td><td>${data.isTaken ? 'Yes' : 'No'}</td></tr>
+                                        </table>
+                                    </div>
+                                    <!-- WHOIS Data -->
+                                    <div class="report-section">
+                                        <h3>WHOIS Data</h3>
+                                        <table id="whoisTable">
+                                            <tr><th>Field</th><th>Value</th></tr>
+                                            <tr><td>Registrant</td><td>${safeRender(data.whois.registrant)}</td></tr>
+                                            <tr><td>Organization</td><td>${safeRender(data.whois.organization)}</td></tr>
+                                            <tr><td>Email</td><td>${safeRender(data.whois.email)}</td></tr>
+                                            <tr><td>Phone</td><td>${safeRender(data.whois.phone)}</td></tr>
+                                            <tr><td>Address</td><td>${safeRender(data.whois.address)}</td></tr>
+                                            <tr><td>Registrar</td><td>${safeRender(data.whois.registrar)}</td></tr>
+                                            <tr><td>Created</td><td>${safeRender(data.whois.created)}</td></tr>
+                                            <tr><td>Expires</td><td>${safeRender(data.whois.expires)}</td></tr>
+                                            <tr><td>Name Servers</td><td>${data.whois.nameServers ? data.whois.nameServers.map(safeRender).join(', ') : 'N/A'}</td></tr>
+                                            <tr><td>Error</td><td>${safeRender(data.whois.error)}</td></tr>
+                                        </table>
+                                        <h4>WHOIS History</h4>
+                                        <table id="whoisHistoryTable">
+                                            <tr><th>Date</th><th>Change</th></tr>
+                                            ${data.whois.history ? data.whois.history.map(item => `
+                                                <tr>
+                                                    <td>${safeRender(item.date)}</td>
+                                                    <td>${safeRender(item.change)}</td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="2">N/A</td></tr>'}
+                                        </table>
+                                    </div>
+                                    <!-- DNS Records -->
+                                    <div class="report-section">
+                                        <h3>DNS Records</h3>
+                                        <table id="dnsTable">
+                                            <tr><th>Type</th><th>IP</th><th>Domain</th></tr>
+                                            ${data.dns ? data.dns.map(record => `
+                                                <tr>
+                                                    <td>${safeRender(record.type)}</td>
+                                                    <td>${safeRender(record.ip)}</td>
+                                                    <td>${safeRender(record.domain)}</td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="3">N/A</td></tr>'}
+                                        </table>
+                                    </div>
+                                    <!-- Certificates -->
+                                    <div class="report-section">
+                                        <h3>SSL Certificates</h3>
+                                        <table id="certsTable">
+                                            <tr><th>Issuer</th><th>Subject</th><th>Not Before</th><th>Not After</th><th>Serial Number</th></tr>
+                                            ${data.certificates ? data.certificates.map(cert => `
+                                                <tr>
+                                                    <td>${cert.issuer ? safeRender(JSON.stringify(cert.issuer)) : safeRender(cert.error)}</td>
+                                                    <td>${cert.subject ? safeRender(JSON.stringify(cert.subject)) : 'N/A'}</td>
+                                                    <td>${safeRender(cert.notBefore)}</td>
+                                                    <td>${safeRender(cert.notAfter)}</td>
+                                                    <td>${safeRender(cert.serialNumber)}</td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="5">N/A</td></tr>'}
+                                        </table>
+                                    </div>
+                                    <!-- Subdomains -->
+                                    <div class="report-section">
+                                        <h3>Subdomains</h3>
+                                        <ul id="subdomainsList">
+                                            ${data.subdomains && data.subdomains.length ? data.subdomains.map(sub => `<li>${safeRender(sub)}</li>`).join('') : '<li>N/A</li>'}
+                                        </ul>
+                                    </div>
+                                    <!-- Open Ports -->
+                                    <div class="report-section">
+                                        <h3>Open Ports</h3>
+                                        <table id="portsTable">
+                                            <tr><th>Port</th><th>Service</th><th>Banner</th></tr>
+                                            ${data.services && data.services.length ? data.services.map(service => `
+                                                <tr>
+                                                    <td>${safeRender(service.port)}</td>
+                                                    <td>${safeRender(service.service)}</td>
+                                                    <td>${safeRender(service.banner)}</td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="3">N/A</td></tr>'}
+                                        </table>
+                                    </div>
+                                    <!-- Reverse IP -->
+                                    <div class="report-section">
+                                        <h3>Reverse IP Lookup</h3>
+                                        <ul id="reverseIPList">
+                                            ${data.reverseIP && data.reverseIP.length ? data.reverseIP.map(ip => `<li>${safeRender(ip)}</li>`).join('') : '<li>N/A</li>'}
+                                        </ul>
+                                    </div>
+                                    <!-- Traceroute -->
+                                    <div class="report-section">
+                                        <h3>Traceroute</h3>
+                                        <ul id="tracerouteList">
+                                            ${data.traceroute && data.traceroute.length ? data.traceroute.map(hop => `<li>${safeRender(hop)}</li>`).join('') : '<li>N/A</li>'}
+                                        </ul>
+                                        <div id="tracerouteGraph" style="height: 400px; border: 1px solid #ddd; margin-top: 20px;"></div>
+                                    </div>
+                                    <!-- Geolocation -->
+                                    <div class="report-section">
+                                        <h3>Geolocation</h3>
+                                        <table id="geoTable">
+                                            <tr><th>Field</th><th>Value</th></tr>
+                                            <tr><td>Latitude</td><td>${safeRender(data.geolocation.latitude)}</td></tr>
+                                            <tr><td>Longitude</td><td>${safeRender(data.geolocation.longitude)}</td></tr>
+                                            <tr><td>City</td><td>${safeRender(data.geolocation.city)}</td></tr>
+                                            <tr><td>Country</td><td>${safeRender(data.geolocation.country)}</td></tr>
+                                            <tr><td>ISP</td><td>${safeRender(data.geolocation.isp)}</td></tr>
+                                            <tr><td>Organization</td><td>${safeRender(data.geolocation.org)}</td></tr>
+                                        </table>
+                                    </div>
+                                    <!-- Emails -->
+                                    <div class="report-section">
+                                        <h3>Associated Emails</h3>
+                                        <table id="emailsTable">
+                                            <tr><th>Email</th><th>Source</th><th>Confidence</th></tr>
+                                            ${data.emails && data.emails.length ? data.emails.map(email => `
+                                                <tr>
+                                                    <td>${safeRender(email.email)}</td>
+                                                    <td>${safeRender(email.source)}</td>
+                                                    <td>${safeRender(email.confidence)}</td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="3">N/A</td></tr>'}
+                                        </table>
+                                    </div>
+                                    <!-- Threat Intelligence -->
+                                    <div class="report-section">
+                                        <h3>Threat Intelligence</h3>
+                                        <ul id="threatList">
+                                            ${data.threatIntelligence && data.threatIntelligence.length ? data.threatIntelligence.map(threat => {
+                                                if (typeof threat === 'object') {
+                                                    return `<li>${Object.entries(threat).map(([key, value]) => `${safeRender(key)}: ${safeRender(value)}`).join(', ')}</li>`;
+                                                }
+                                                return `<li>${safeRender(threat)}</li>`;
+                                            }).join('') : '<li>N/A</li>'}
+                                        </ul>
+                                    </div>
+                                    <!-- Technologies -->
+                                    <div class="report-section">
+                                        <h3>Technologies</h3>
+                                        <ul id="techList">
+                                            ${data.technologies && data.technologies.length ? data.technologies.map(tech => `<li>${safeRender(tech)}</li>`).join('') : '<li>N/A</li>'}
+                                        </ul>
+                                    </div>
+                                    <!-- Attack Surface -->
+                                    <div class="report-section">
+                                        <h3>Attack Surface</h3>
+                                        <ul id="attackSurfaceList">
+                                            ${data.attackSurface && data.attackSurface.length ? data.attackSurface.map(risk => `<li>${safeRender(risk)}</li>`).join('') : '<li>N/A</li>'}
+                                        </ul>
+                                    </div>
+                                    <!-- Security Headers -->
+                                    <div class="report-section">
+                                        <h3>Security Headers</h3>
+                                        <table id="headersTable">
+                                            <tr><th>Header</th><th>Present</th><th>Value</th><th>Valid</th><th>Description</th><th>Recommendation</th></tr>
+                                            ${data.securityHeaders && data.securityHeaders.headers && data.securityHeaders.headers.length ? data.securityHeaders.headers.map(header => `
+                                                <tr>
+                                                    <td>${safeRender(header.header)}</td>
+                                                    <td>${header.present ? 'Yes' : 'No'}</td>
+                                                    <td>${safeRender(header.value)}</td>
+                                                    <td>${header.valid ? 'Yes' : 'No'}</td>
+                                                    <td>${safeRender(header.description)}</td>
+                                                    <td>${safeRender(header.recommendation)}</td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="6">N/A</td></tr>'}
+                                        </table>
+                                        <p><strong>Grade:</strong> ${safeRender(data.securityHeaders.grade)}</p>
+                                        <h4>Recommendations</h4>
+                                        <ul id="headersRecommendations">
+                                            ${data.securityHeaders.recommendations && data.securityHeaders.recommendations.length ? data.securityHeaders.recommendations.map(rec => `<li>${safeRender(rec)}</li>`).join('') : '<li>N/A</li>'}
+                                        </ul>
+                                        <h4>Comparison</h4>
+                                        <ul id="headersComparison">
+                                            ${data.securityHeaders.comparison && data.securityHeaders.comparison.length ? data.securityHeaders.comparison.map(comp => `<li>${safeRender(comp)}</li>`).join('') : '<li>N/A</li>'}
+                                        </ul>
+                                        <h4>Historical Scans</h4>
+                                        <table id="headersHistoricalTable">
+                                            <tr><th>Timestamp</th><th>Grade</th></tr>
+                                            ${data.securityHeaders.historical_scans && data.securityHeaders.historical_scans.length ? data.securityHeaders.historical_scans.map(scan => `
+                                                <tr>
+                                                    <td>${safeRender(scan.timestamp)}</td>
+                                                    <td>${safeRender(scan.grade)}</td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="2">N/A</td></tr>'}
+                                        </table>
+                                    </div>
+                                    <!-- Wayback Images -->
+                                    <div class="report-section">
+                                        <h3>Wayback Machine Images</h3>
+                                        <table id="waybackTable">
+                                            <tr><th>Filename</th><th>Timestamp</th><th>Image</th><th>Original URL</th><th>Archived URL</th></tr>
+                                            ${data.waybackImages && data.waybackImages.length ? data.waybackImages.map(img => `
+                                                <tr>
+                                                    <td>${safeRender(img.filename)}</td>
+                                                    <td>${safeRender(img.timestamp)}</td>
+                                                    <td><img src="${safeRender(img.archived_url)}" alt="${safeRender(img.filename)}" class="wayback-image" onerror="this.src='/static/images/fallback.png';"></td>
+                                                    <td>${safeRender(img.original_url)}</td>
+                                                    <td><a href="${safeRender(img.archived_url)}" target="_blank">${safeRender(img.archived_url)}</a></td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="5">N/A</td></tr>'}
+                                        </table>
+                                    </div>
+                                    <!-- Related Information -->
+                                    <div class="report-section">
+                                        <h3>Related Information</h3>
+                                        <ul id="relatedInfoList">
+                                            ${data.relatedInfo && data.relatedInfo.length ? data.relatedInfo.map(info => `<li>${safeRender(info)}</li>`).join('') : '<li>N/A</li>'}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+            // Render traceroute graph
+            if (data.traceroute && data.traceroute.length) {
+                const nodes = [];
+                const edges = [];
+                data.traceroute.forEach((hop, index) => {
+                    nodes.push({ id: index + 1, label: hop });
+                    if (index > 0) {
+                        edges.push({ from: index, to: index + 1 });
+                    }
+                });
+                const container = document.getElementById('tracerouteGraph');
+                const graphData = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+                const options = { layout: { hierarchical: { direction: 'UD', sortMethod: 'directed' } }, edges: { arrows: 'to' } };
+                new vis.Network(container, graphData, options);
+            }
+        }
+
+        // Load report if on report route
+        window.addEventListener('load', () => {
+            const path = window.location.pathname;
+            const reportMatch = path.match(/^\/report\/(.+)/);
+            if (reportMatch) {
+                const domain = decodeURIComponent(reportMatch[1]);
+                document.getElementById('domainInput').value = domain;
+                document.getElementById('domainSearchForm').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>
