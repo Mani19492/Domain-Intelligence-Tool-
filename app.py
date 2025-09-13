@@ -35,7 +35,7 @@ app = Flask(__name__)
 
 # DNSDumpster API configuration
 DNSDUMPSTER_API_KEY = "e33c4c55e9caa8b2a0d64421ae1417fa40c05c118710286eb766d1c1e05d0a16"
-DNSDUMPSTER_BASE_URL = "https://api.dnsdumpster.com"
+DNSDUMPSTER_BASE_URL = "https://dnsdumpster.com"
 
 # Cache file for reverse IP lookups
 CACHE_FILE = 'reverse_ip_cache.pkl'
@@ -96,21 +96,43 @@ def get_ip_geolocation(ip):
 def query_dnsdumpster(domain):
     """Query DNSDumpster API for domain information"""
     try:
-        headers = {
-            'X-API-Key': DNSDUMPSTER_API_KEY,
-            'Content-Type': 'application/json'
-        }
+        # DNSDumpster web scraping approach since API is not publicly available
+        import re
+        from urllib.parse import urljoin
         
-        # DNSDumpster API endpoint for domain lookup
-        url = f"{DNSDUMPSTER_BASE_URL}/lookup"
-        data = {'domain': domain}
+        session = requests.Session()
+        url = f"{DNSDUMPSTER_BASE_URL}/"
         
-        response = requests.post(url, json=data, headers=headers, timeout=10)
+        # Get CSRF token
+        response = session.get(url, timeout=10)
+        csrf_token = re.findall(r'name="csrfmiddlewaretoken" value="([^"]*)"', response.text)
         
-        if response.status_code == 200:
-            return response.json()
+        if csrf_token:
+            # Submit domain for analysis
+            data = {
+                'csrfmiddlewaretoken': csrf_token[0],
+                'targetip': domain,
+                'user': 'free'
+            }
+            
+            headers = {
+                'Referer': url,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            response = session.post(url, data=data, headers=headers, timeout=15)
+            
+            if response.status_code == 200:
+                # Parse the response for subdomain information
+                subdomains = re.findall(r'([a-zA-Z0-9.-]+\.' + re.escape(domain) + r')', response.text)
+                unique_subdomains = list(set(subdomains))
+                
+                return {
+                    'subdomains': unique_subdomains,
+                    'status': 'success'
+                }
         else:
-            print(f"DNSDumpster API error: {response.status_code}")
+            print("Could not get CSRF token from DNSDumpster")
             return None
             
     except Exception as e:
@@ -141,12 +163,10 @@ def get_domain_info(domain):
             info['dnsdumpster_data'] = dnsdumpster_result
             
             # Extract subdomains from DNSDumpster
-            if 'dns_records' in dnsdumpster_result:
-                for record_type, records in dnsdumpster_result['dns_records'].items():
-                    if isinstance(records, list):
-                        for record in records:
-                            if 'host' in record and record['host'] not in info['subdomains']:
-                                info['subdomains'].append(record['host'])
+            if 'subdomains' in dnsdumpster_result:
+                for subdomain in dnsdumpster_result['subdomains']:
+                    if subdomain not in info['subdomains']:
+                        info['subdomains'].append(subdomain)
         
         # Get IP addresses
         try:
