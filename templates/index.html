@@ -3,18 +3,29 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Advanced Domain Intelligence Tool for comprehensive domain analysis">
+    <meta name="description" content="Domain Intelligence Tool for analyzing WHOIS data, subdomains, security, and network insights.">
     <meta name="author" content="Domain Intelligence Team">
-    <title>Domain Intelligence Tool - Advanced Analysis</title>
+    <title>Domain Intelligence Tool</title>
 
     <!-- CSS FILES -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="/static/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/bootstrap-icons.css" rel="stylesheet">
     <link href="/static/css/templatemo-topic-listing.css" rel="stylesheet">
-    
+
+    <!-- amCharts for map visualization -->
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/map.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/geodata/worldLow.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Dark.js"></script>
+
+    <!-- Vis.js for network visualization -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+    <!-- Dark/Metallic/Glass Theme -->
     <style>
         :root {
             --primary-dark: #0a0a0a;
@@ -30,22 +41,16 @@
             --text-muted: #a0a0a0;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @font-face {
+            font-family: 'Critical Mass';
+            src: url('/static/fonts/critical-mass-ldr.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
         }
 
-        body {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--secondary-dark) 50%, var(--tertiary-dark) 100%);
-            color: var(--text-light);
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
+        /* Floating Particles Background */
         body::before {
-            content: '';
+            content: "";
             position: fixed;
             top: 0;
             left: 0;
@@ -55,76 +60,92 @@
                 radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
                 radial-gradient(circle at 80% 20%, rgba(57, 255, 20, 0.1) 0%, transparent 50%),
                 radial-gradient(circle at 40% 40%, rgba(212, 175, 55, 0.05) 0%, transparent 50%);
+            z-index: -2;
             pointer-events: none;
-            z-index: -1;
         }
 
+        /* Floating Particles */
+        .particle {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background: var(--neon-blue);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+            animation: float 6s infinite linear;
+            box-shadow: 0 0 6px var(--neon-blue);
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Dark Theme Override */
+        body {
+            background: var(--primary-dark) !important;
+            color: var(--text-light) !important;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Glass Morphism Effects */
         .glass-effect {
-            background: var(--glass-bg);
+            background: var(--glass-bg) !important;
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--glass-border) !important;
             border-radius: 15px;
             box-shadow: 
                 0 8px 32px rgba(0, 0, 0, 0.3),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
-        .metallic-text {
-            background: linear-gradient(45deg, var(--metallic-silver), var(--metallic-gold), var(--metallic-silver));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-weight: 700;
-        }
-
-        .neon-glow {
-            text-shadow: 
-                0 0 5px currentColor,
-                0 0 10px currentColor,
-                0 0 15px currentColor,
-                0 0 20px currentColor;
-        }
-
-        /* Navbar Styling */
+        /* Navigation */
         .navbar {
-            background: rgba(10, 10, 10, 0.9) !important;
+            background: var(--glass-bg) !important;
             backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--glass-border);
-            padding: 1rem 0;
+            border-bottom: 1px solid var(--glass-border) !important;
         }
 
         .navbar-brand {
+            color: var(--metallic-silver) !important;
             font-family: 'Orbitron', monospace;
-            font-weight: 900;
-            font-size: 1.5rem;
-            color: var(--neon-blue) !important;
+            font-weight: 700;
         }
 
         .navbar-nav .nav-link {
             color: var(--text-light) !important;
-            font-weight: 500;
             transition: all 0.3s ease;
         }
 
-        .navbar-nav .nav-link:hover,
-        .navbar-nav .nav-link.active {
+        .navbar-nav .nav-link:hover {
             color: var(--neon-blue) !important;
             text-shadow: 0 0 10px var(--neon-blue);
         }
 
         /* Hero Section */
         .hero-section {
-            background: transparent;
-            padding: 150px 0 100px;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--secondary-dark) 100%) !important;
             position: relative;
+            overflow: hidden;
         }
 
-        .hero-title {
+        .hero-section h1 {
             font-family: 'Orbitron', monospace;
-            font-size: 3.5rem;
             font-weight: 900;
-            margin-bottom: 2rem;
+            background: linear-gradient(45deg, var(--metallic-silver), var(--metallic-gold), var(--metallic-silver));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             animation: pulse 2s infinite;
         }
 
@@ -133,853 +154,999 @@
             50% { opacity: 0.8; }
         }
 
-        /* Search Container */
-        .input-group {
-            background: var(--glass-bg) !important;
-            backdrop-filter: blur(20px);
-            border: 2px solid var(--glass-border);
-            border-radius: 50px !important;
-            padding: 5px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        .hero-section h6 {
+            color: var(--text-muted) !important;
         }
 
-        .input-group input {
+        /* Search Form */
+        .custom-form .input-group {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            padding: 5px;
+            backdrop-filter: blur(10px);
+        }
+
+        .custom-form input {
             background: transparent !important;
             border: none !important;
             color: var(--text-light) !important;
-            font-size: 1.1rem;
-            padding: 15px 20px;
         }
 
-        .input-group input:focus {
-            outline: none !important;
-            box-shadow: none !important;
+        .custom-form input::placeholder {
+            color: var(--text-muted) !important;
         }
 
-        .input-group input::placeholder {
-            color: var(--text-muted);
-        }
-
-        .input-group button {
+        .custom-form button {
             background: linear-gradient(45deg, var(--neon-blue), var(--neon-green)) !important;
             border: none !important;
             border-radius: 45px !important;
             color: var(--primary-dark) !important;
             font-weight: 600;
-            padding: 15px 30px;
             transition: all 0.3s ease;
         }
 
-        .input-group button:hover {
+        .custom-form button:hover {
             transform: scale(1.05);
             box-shadow: 0 5px 15px rgba(0, 255, 255, 0.4);
         }
 
-        /* Featured Section */
-        .featured-section {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border-radius: 0 0 100px 100px;
-            padding-bottom: 100px;
-            border: 1px solid var(--glass-border);
-        }
-
         /* Custom Blocks */
         .custom-block {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
+            background: var(--glass-bg) !important;
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border) !important;
             border-radius: 15px;
-            padding: 30px;
             transition: all 0.3s ease;
-            height: 100%;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
         .custom-block:hover {
             transform: translateY(-10px);
             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-            border-color: var(--neon-blue);
+            border-color: var(--neon-blue) !important;
         }
 
         .custom-block h5 {
-            color: var(--neon-blue);
+            color: var(--metallic-silver) !important;
             font-family: 'Orbitron', monospace;
-            font-weight: 700;
-            margin-bottom: 15px;
+            font-weight: 600;
         }
 
         .custom-block p {
-            color: var(--text-muted);
-            line-height: 1.6;
+            color: var(--text-muted) !important;
         }
 
-        /* Timeline Section */
+        /* Section Overlays */
+        .section-overlay {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1) 0%, rgba(57, 255, 20, 0.1) 100%) !important;
+        }
+
+        /* Featured Section */
+        .featured-section {
+            background: var(--secondary-dark) !important;
+        }
+
+        /* Tabs */
+        .nav-tabs {
+            border-bottom: 1px solid var(--glass-border) !important;
+        }
+
+        .nav-tabs .nav-link {
+            background: var(--glass-bg) !important;
+            border: 1px solid var(--glass-border) !important;
+            color: var(--text-light) !important;
+            margin-right: 10px;
+            border-radius: 10px 10px 0 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tabs .nav-link.active {
+            background: var(--neon-blue) !important;
+            color: var(--primary-dark) !important;
+            border-color: var(--neon-blue) !important;
+        }
+
+        .tab-content {
+            background: var(--glass-bg) !important;
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border) !important;
+            border-radius: 0 15px 15px 15px;
+        }
+
+        /* Timeline */
         .timeline-section {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            position: relative;
+            background: var(--secondary-dark) !important;
+        }
+
+        .timeline-container .vertical-scrollable-timeline li h4 {
+            color: var(--metallic-gold) !important;
+            font-family: 'Orbitron', monospace;
+        }
+
+        .timeline-container .vertical-scrollable-timeline li p {
+            color: var(--text-light) !important;
         }
 
         .timeline-container .vertical-scrollable-timeline li .icon-holder {
-            background: linear-gradient(45deg, var(--neon-blue), var(--neon-green));
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            background: var(--neon-blue) !important;
+            box-shadow: 0 0 20px var(--neon-blue);
         }
 
-        .timeline-container .vertical-scrollable-timeline li.active .icon-holder {
-            background: linear-gradient(45deg, var(--metallic-gold), var(--metallic-silver));
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
-        }
-
-        /* FAQ Section */
-        .faq-section .accordion-item {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            margin-bottom: 10px;
+        /* Report Sections */
+        .report-section {
+            background: var(--glass-bg) !important;
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border) !important;
             border-radius: 15px;
-        }
-
-        .faq-section .accordion-button {
-            background: transparent;
-            color: var(--text-light);
-            border: none;
-            font-weight: 600;
-        }
-
-        .faq-section .accordion-button:not(.collapsed) {
-            background: var(--glass-bg);
-            color: var(--neon-blue);
-            box-shadow: none;
-        }
-
-        .faq-section .accordion-body {
-            background: transparent;
-            color: var(--text-muted);
-        }
-
-        /* Contact Form */
-        .custom-form .form-control {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            color: var(--text-light);
-            border-radius: 15px;
-        }
-
-        .custom-form .form-control:focus {
-            background: var(--glass-bg);
-            border-color: var(--neon-blue);
-            color: var(--text-light);
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-        }
-
-        .custom-form button[type="submit"] {
-            background: linear-gradient(45deg, var(--neon-blue), var(--neon-green));
-            border: none;
-            color: var(--primary-dark);
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .custom-form button[type="submit"]:hover {
-            transform: scale(1.05);
-            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.4);
-        }
-
-        /* Site Footer */
-        .site-footer {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid var(--glass-border);
-            color: var(--text-light);
-        }
-
-        .site-footer-title {
-            color: var(--neon-blue);
-            font-family: 'Orbitron', monospace;
-            font-weight: 700;
-        }
-
-        .site-footer-link {
-            color: var(--text-muted);
-            transition: all 0.3s ease;
-        }
-
-        .site-footer-link:hover {
-            color: var(--neon-blue);
-            text-shadow: 0 0 5px var(--neon-blue);
-        }
-
-        /* Map Styling */
-        #chartdiv {
-            width: 100%;
-            height: 500px;
-            max-width: 100%;
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 15px;
-            overflow: hidden;
-        }
-
-        /* Loading Spinner */
-        .loading-spinner {
-            display: none;
-            text-align: center;
-            padding: 50px;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(0, 255, 255, 0.3);
-            border-top: 3px solid var(--neon-blue);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Results Container */
-        .results-container {
-            margin-top: 50px;
-            display: none;
-        }
-
-        .result-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 15px;
-            padding: 30px;
             margin-bottom: 30px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
         }
 
-        .result-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .result-title {
+        .report-section h3 {
+            color: var(--metallic-gold) !important;
             font-family: 'Orbitron', monospace;
-            font-size: 1.5rem;
             font-weight: 700;
-            color: var(--neon-blue);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            border-bottom: 2px solid var(--neon-blue);
+            padding-bottom: 10px;
         }
 
-        .result-title i {
-            color: var(--neon-green);
-        }
-
-        /* Tables */
-        .table-dark {
-            background: rgba(0, 0, 0, 0.3);
+        .report-section table {
+            background: rgba(0, 0, 0, 0.3) !important;
             backdrop-filter: blur(10px);
             border-radius: 10px;
             overflow: hidden;
         }
 
-        .table-dark th {
-            background: rgba(0, 255, 255, 0.1);
-            color: var(--neon-blue);
-            border: none;
+        .report-section table th {
+            background: var(--neon-blue) !important;
+            color: var(--primary-dark) !important;
             font-weight: 600;
+            border: none !important;
         }
 
-        .table-dark td {
-            border-color: rgba(255, 255, 255, 0.1);
-            color: var(--text-light);
+        .report-section table td {
+            background: var(--glass-bg) !important;
+            color: var(--text-light) !important;
+            border: 1px solid var(--glass-border) !important;
+        }
+
+        .report-section ul li {
+            color: var(--text-light) !important;
+            background: var(--glass-bg);
+            margin: 5px 0;
+            padding: 8px 15px;
+            border-radius: 8px;
+            border-left: 3px solid var(--neon-green);
+        }
+
+        /* Map Container */
+        #chartdiv {
+            width: 100%;
+            height: 500px;
+            max-width: 100%;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+        }
+
+        /* Network Graph */
+        #tracerouteGraph, #networkGraph {
+            background: var(--glass-bg) !important;
+            border: 1px solid var(--glass-border) !important;
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+        }
+
+        /* Loading and Error States */
+        .loading {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            color: var(--text-light) !important;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .loading::after {
+            content: "";
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--glass-border);
+            border-radius: 50%;
+            border-top-color: var(--neon-blue);
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(255, 0, 0, 0.1) !important;
+            border: 1px solid rgba(255, 0, 0, 0.3) !important;
+            color: #ff6b6b !important;
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
         }
 
         /* Download Button */
         .download-btn {
-            background: linear-gradient(45deg, var(--metallic-gold), var(--metallic-silver));
-            border: none;
-            border-radius: 50px;
-            padding: 15px 30px;
-            color: var(--primary-dark);
+            background: linear-gradient(45deg, var(--metallic-silver), var(--metallic-gold)) !important;
+            border: none !important;
+            border-radius: 50px !important;
+            color: var(--primary-dark) !important;
             font-weight: 600;
-            cursor: pointer;
+            padding: 15px 30px;
+            font-size: 1.1em;
             transition: all 0.3s ease;
-            margin: 20px 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
         }
 
         .download-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
-        }
-
-        /* Floating Particles */
-        .floating-particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        .particle {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background: var(--neon-blue);
-            border-radius: 50%;
-            animation: float 6s infinite linear;
-        }
-
-        @keyframes float {
-            0% {
-                transform: translateY(100vh) rotate(0deg);
-                opacity: 0;
-            }
-            10% {
-                opacity: 1;
-            }
-            90% {
-                opacity: 1;
-            }
-            100% {
-                transform: translateY(-100px) rotate(360deg);
-                opacity: 0;
-            }
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.5);
         }
 
         /* Responsive Design */
         @media (max-width: 768px) {
-            .hero-title {
+            .hero-section h1 {
                 font-size: 2.5rem;
             }
             
             .custom-block {
                 margin-bottom: 20px;
             }
+            
+            #chartdiv {
+                height: 300px;
+            }
+        }
+
+        /* Status Badges */
+        .status-secure {
+            background: rgba(57, 255, 20, 0.2);
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+        }
+
+        .status-warning {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid #ffc107;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+        }
+
+        .status-danger {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+            border: 1px solid #dc3545;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
         }
     </style>
 </head>
-
-<body>
+<body id="top">
     <!-- Floating Particles -->
-    <div class="floating-particles" id="particles"></div>
+    <script>
+        // Create floating particles
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 6 + 's';
+            particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+            document.body.appendChild(particle);
+        }
+    </script>
 
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg fixed-top">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="/static/images/logo/domain.png" alt="Logo" style="height: 40px; margin-right: 10px;">
-                <span class="metallic-text">Domain Intelligence</span>
-            </a>
-
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-lg-5 me-lg-auto">
-                    <li class="nav-item">
-                        <a class="nav-link click-scroll" href="#section_1">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link click-scroll" href="#section_2">Browse Topics</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link click-scroll" href="#section_3">How it works</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link click-scroll" href="#section_4">FAQs</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link click-scroll" href="#section_5">Contact</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="hero-section" id="section_1">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-8 col-12 mx-auto">
-                    <h1 class="text-white text-center hero-title metallic-text neon-glow">
-                        Advanced Domain Intelligence
-                    </h1>
-                    <h6 class="text-center" style="color: var(--text-muted);">
-                        Comprehensive domain analysis with geolocation mapping, security assessment, and network visualization
-                    </h6>
-
-                    <form class="custom-form mt-4 pt-2 mb-lg-0 mb-5" role="search" method="post" action="#">
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text bi-search" id="basic-addon1"></span>
-                            <input name="keyword" type="search" class="form-control" id="keyword" placeholder="Enter domain name (e.g., example.com)" aria-label="Search">
-                            <button type="button" class="form-control" onclick="analyzeDomain()">Search</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Loading Spinner -->
-    <div class="loading-spinner" id="loadingSpinner">
-        <div class="container">
-            <div class="spinner"></div>
-            <h4 style="color: var(--neon-blue);">Analyzing Domain...</h4>
-            <p style="color: var(--text-muted);">This may take a few moments</p>
-        </div>
-    </div>
-
-    <!-- Results Container -->
-    <div class="results-container" id="resultsContainer">
-        <div class="container">
-            <!-- Domain Overview -->
-            <div class="result-card">
-                <h3 class="result-title">
-                    <i class="bi bi-globe"></i>
-                    Domain Overview
-                </h3>
-                <div id="domainOverview"></div>
-                <button class="download-btn" onclick="downloadReport()" id="downloadBtn" style="display: none;">
-                    <i class="bi bi-download"></i>
-                    Download PDF Report
+    <main>
+        <nav class="navbar navbar-expand-lg sticky-top">
+            <div class="container">
+                <a class="navbar-brand" href="/">
+                    <img src="/static/images/logo/domain.png" alt="Domain Intelligence Tool Logo" class="logo-img" style="height: 60px; width: auto; vertical-align: middle; margin-right: 10px;">
+                    <span style="font-size: 0.8em;">Domain Intelligence Tool</span>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
                 </button>
-            </div>
-
-            <!-- Geolocation Information -->
-            <div class="result-card">
-                <h3 class="result-title">
-                    <i class="bi bi-geo-alt"></i>
-                    System Locations
-                </h3>
-                <div id="locationTable"></div>
-                <div id="chartdiv"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Featured Section -->
-    <section class="featured-section">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-4 col-12 mb-4 mb-lg-0">
-                    <div class="custom-block glass-effect bg-white">
-                        <h5 class="mb-2">DNS Analysis</h5>
-                        <p class="mb-0">Comprehensive DNS record enumeration and analysis</p>
-                    </div>
-                </div>
-
-                <div class="col-lg-6 col-12">
-                    <div class="custom-block glass-effect custom-block-overlay">
-                        <div class="d-flex flex-column h-100">
-                            <img src="/static/images/topics/DNS Records.png" class="custom-block-image img-fluid" alt="">
-                            <div class="custom-block-overlay-text d-flex">
-                                <div>
-                                    <h5 class="text-white mb-2">Security Assessment</h5>
-                                    <p class="text-white">Advanced security analysis and vulnerability detection</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-2 col-12">
-                    <div class="custom-block glass-effect custom-block-overlay">
-                        <div class="custom-block-overlay-text d-flex">
-                            <div>
-                                <h5 class="text-white mb-2">Geolocation</h5>
-                                <p class="text-white">Real-time IP geolocation mapping</p>
-                            </div>
-                        </div>
-                        <img src="/static/images/topics/Subdomain Mapping.png" class="custom-block-image img-fluid" alt="">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Browse Topics Section -->
-    <section class="section-padding" id="section_2">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-12 col-12 text-center">
-                    <h3 class="mb-4 metallic-text">Browse Topics</h3>
-                </div>
-
-                <div class="col-lg-8 col-12 mt-3 mx-auto">
-                    <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                        <button class="nav-link active" id="nav-intro-tab" data-bs-toggle="tab" data-bs-target="#nav-intro" type="button" role="tab" aria-controls="nav-intro" aria-selected="true">Introduction</button>
-                        <button class="nav-link" id="nav-browse-tab" data-bs-toggle="tab" data-bs-target="#nav-browse" type="button" role="tab" aria-controls="nav-browse" aria-selected="false">How it works</button>
-                        <button class="nav-link" id="nav-contact-tab" data-bs-toggle="tab" data-bs-target="#nav-contact" type="button" role="tab" aria-controls="nav-contact" aria-selected="false">FAQs</button>
-                    </div>
-                </div>
-
-                <div class="col-lg-12 col-12">
-                    <div class="tab-content glass-effect" id="nav-tabContent">
-                        <div class="tab-pane fade show active" id="nav-intro" role="tabpanel" aria-labelledby="nav-intro-tab">
-                            <div class="row">
-                                <div class="col-lg-3 col-md-6 col-12 mb-4 mb-lg-0">
-                                    <div class="custom-block glass-effect bg-white">
-                                        <h5 class="mb-2">DNS Records</h5>
-                                        <p class="mb-0">Complete DNS record analysis including A, AAAA, MX, NS, TXT, CNAME, and SOA records</p>
-                                        <div class="custom-block-image-wrap">
-                                            <a href="#" class="custom-block-image-wrap">
-                                                <img src="/static/images/topics/DNS Records.png" class="custom-block-image img-fluid" alt="">
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-lg-3 col-md-6 col-12 mb-4 mb-lg-0">
-                                    <div class="custom-block glass-effect bg-white">
-                                        <h5 class="mb-2">Subdomain Discovery</h5>
-                                        <p class="mb-0">Advanced subdomain enumeration using DNSDumpster API integration</p>
-                                        <div class="custom-block-image-wrap">
-                                            <a href="#" class="custom-block-image-wrap">
-                                                <img src="/static/images/topics/Active Subdomains.png" class="custom-block-image img-fluid" alt="">
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-lg-3 col-md-6 col-12 mb-4 mb-lg-0">
-                                    <div class="custom-block glass-effect bg-white">
-                                        <h5 class="mb-2">Security Analysis</h5>
-                                        <p class="mb-0">Comprehensive security assessment including SSL certificates and security headers</p>
-                                        <div class="custom-block-image-wrap">
-                                            <a href="#" class="custom-block-image-wrap">
-                                                <img src="/static/images/topics/Security Headers.png" class="custom-block-image img-fluid" alt="">
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-lg-3 col-md-6 col-12">
-                                    <div class="custom-block glass-effect bg-white">
-                                        <h5 class="mb-2">Geolocation Mapping</h5>
-                                        <p class="mb-0">Real-time IP geolocation with interactive world map visualization</p>
-                                        <div class="custom-block-image-wrap">
-                                            <a href="#" class="custom-block-image-wrap">
-                                                <img src="/static/images/topics/Subdomain Mapping.png" class="custom-block-image img-fluid" alt="">
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="tab-pane fade" id="nav-browse" role="tabpanel" aria-labelledby="nav-browse-tab">
-                            <div class="row">
-                                <div class="col-lg-8 col-12 mb-4">
-                                    <h5 style="color: var(--neon-blue);">How Domain Intelligence Works</h5>
-                                    <p style="color: var(--text-muted);">Our advanced domain analysis tool performs comprehensive reconnaissance using multiple data sources and APIs.</p>
-                                </div>
-
-                                <div class="col-lg-4 col-12">
-                                    <img src="/static/images/topics/Web Technologies.png" class="img-fluid" alt="">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="tab-pane fade" id="nav-contact" role="tabpanel" aria-labelledby="nav-contact-tab">
-                            <h5 style="color: var(--neon-blue);">Frequently Asked Questions</h5>
-                            <p style="color: var(--text-muted);">Common questions about our domain intelligence platform.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Timeline Section -->
-    <section class="timeline-section section-padding" id="section_3">
-        <div class="section-overlay"></div>
-        <div class="container">
-            <div class="row">
-                <div class="col-12 text-center">
-                    <h2 class="text-white mb-4 metallic-text">How it works?</h2>
-                </div>
-
-                <div class="col-lg-10 col-12 mx-auto">
-                    <div class="timeline-container">
-                        <ul class="vertical-scrollable-timeline" id="vertical-scrollable-timeline">
-                            <div class="list-progress">
-                                <div class="inner"></div>
-                            </div>
-
-                            <li>
-                                <div class="icon-holder">
-                                    <i class="bi-search"></i>
-                                </div>
-                                <div class="text-holder">
-                                    <h2 class="h5 mb-2 text-white">Domain Input</h2>
-                                    <p class="text-white-50 mb-0">Enter the target domain name for comprehensive analysis</p>
-                                </div>
-                            </li>
-
-                            <li>
-                                <div class="icon-holder">
-                                    <i class="bi-geo-alt"></i>
-                                </div>
-                                <div class="text-holder">
-                                    <h2 class="h5 mb-2 text-white">DNS Resolution</h2>
-                                    <p class="text-white-50 mb-0">Perform comprehensive DNS record enumeration and analysis</p>
-                                </div>
-                            </li>
-
-                            <li>
-                                <div class="icon-holder">
-                                    <i class="bi-shield-check"></i>
-                                </div>
-                                <div class="text-holder">
-                                    <h2 class="h5 mb-2 text-white">Security Assessment</h2>
-                                    <p class="text-white-50 mb-0">Analyze security headers, SSL certificates, and vulnerabilities</p>
-                                </div>
-                            </li>
-
-                            <li>
-                                <div class="icon-holder">
-                                    <i class="bi-globe"></i>
-                                </div>
-                                <div class="text-holder">
-                                    <h2 class="h5 mb-2 text-white">Geolocation Mapping</h2>
-                                    <p class="text-white-50 mb-0">Map IP addresses to geographical locations with interactive visualization</p>
-                                </div>
-                            </li>
-
-                            <li>
-                                <div class="icon-holder">
-                                    <i class="bi-file-earmark-pdf"></i>
-                                </div>
-                                <div class="text-holder">
-                                    <h2 class="h5 mb-2 text-white">Report Generation</h2>
-                                    <p class="text-white-50 mb-0">Generate comprehensive PDF reports with all analysis results</p>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- FAQ Section -->
-    <section class="faq-section section-padding" id="section_4">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-6 col-12">
-                    <h2 class="mb-4 metallic-text">Frequently Asked Questions</h2>
-                </div>
-
-                <div class="col-lg-6 col-12 m-auto">
-                    <div class="accordion" id="accordionExample">
-                        <div class="accordion-item">
-                            <h2 class="accordion-header" id="headingOne">
-                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                                    What is Domain Intelligence?
-                                </button>
-                            </h2>
-                            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                    Domain Intelligence is a comprehensive analysis tool that provides detailed information about domain names, including DNS records, security assessment, geolocation data, and network topology visualization.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="accordion-item">
-                            <h2 class="accordion-header" id="headingTwo">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                                    How accurate is the geolocation data?
-                                </button>
-                            </h2>
-                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                    Our geolocation data is sourced from reliable IP geolocation services and provides city-level accuracy in most cases. The accuracy may vary depending on the IP address and location.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="accordion-item">
-                            <h2 class="accordion-header" id="headingThree">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                                    Is this tool safe to use?
-                                </button>
-                            </h2>
-                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                    Yes, our tool is designed for legitimate security research and educational purposes. We do not store any analysis data permanently and follow responsible disclosure practices.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Contact Section -->
-    <section class="contact-section section-padding section-bg" id="section_5">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-12 col-12 text-center">
-                    <h2 class="mb-4 metallic-text">Get in touch</h2>
-                </div>
-
-                <div class="col-lg-5 col-12 mb-4 mb-lg-0">
-                    <iframe class="google-map" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.9663095343008!2d-74.00425878428698!3d40.74827684379132!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c259bf5c1654f3%3A0xc80f9cfce5383d5d!2sGoogle!5e0!3m2!1sen!2sus!4v1586590015433!5m2!1sen!2sus" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-                </div>
-
-                <div class="col-lg-3 col-md-6 col-12 mb-3 mb-lg- mb-md-0 ms-auto">
-                    <h4 class="mb-3" style="color: var(--neon-blue);">Head office</h4>
-                    <p style="color: var(--text-muted);">Bay St &, Larkin St, San Francisco, CA 94109, United States</p>
-                    <hr class="my-4">
-                    <p class="d-flex align-items-center mb-1">
-                        <span class="me-2" style="color: var(--neon-green);">Phone</span>
-                        <a href="tel: 305-240-9671" class="site-footer-link">
-                            305-240-9671
-                        </a>
-                    </p>
-                    <p class="d-flex align-items-center">
-                        <span class="me-2" style="color: var(--neon-green);">Email</span>
-                        <a href="mailto:info@company.com" class="site-footer-link">
-                            info@company.com
-                        </a>
-                    </p>
-                </div>
-
-                <div class="col-lg-3 col-md-6 col-12 mx-auto">
-                    <form class="custom-form contact-form" action="#" method="post" role="form">
-                        <h4 class="mb-3" style="color: var(--neon-blue);">Contact form</h4>
-                        <input type="text" name="contact-name" id="contact-name" class="form-control" placeholder="Name" required="">
-                        <input type="email" name="contact-email" id="contact-email" pattern="[^ @]*@[^ @]*" class="form-control" placeholder="Email address" required="">
-                        <textarea name="contact-message" rows="3" class="form-control" id="contact-message" placeholder="Message"></textarea>
-                        <button type="submit" class="form-control">Send Message</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Site Footer -->
-    <footer class="site-footer section-padding">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-3 col-12 mb-4 pb-2">
-                    <a class="navbar-brand mb-2" href="index.html">
-                        <i class="bi-back"></i>
-                        <span class="site-footer-title metallic-text">Domain Intelligence</span>
-                    </a>
-                </div>
-
-                <div class="col-lg-3 col-md-4 col-6">
-                    <h6 class="site-footer-title mb-3">Resources</h6>
-                    <ul class="site-footer-links">
-                        <li class="site-footer-link-item">
-                            <a href="#" class="site-footer-link">Home</a>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-lg-5 me-lg-auto">
+                        <li class="nav-item">
+                            <a class="nav-link click-scroll" href="#section_1">Home</a>
                         </li>
-                        <li class="site-footer-link-item">
-                            <a href="#" class="site-footer-link">How it works</a>
+                        <li class="nav-item">
+                            <a class="nav-link click-scroll" href="#section_2">Domain Insights</a>
                         </li>
-                        <li class="site-footer-link-item">
-                            <a href="#" class="site-footer-link">FAQs</a>
+                        <li class="nav-item">
+                            <a class="nav-link click-scroll" href="#section_3">How It Works</a>
                         </li>
-                        <li class="site-footer-link-item">
-                            <a href="#" class="site-footer-link">Contact</a>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/logout">Sign Out</a>
                         </li>
                     </ul>
                 </div>
+            </div>
+        </nav>
 
-                <div class="col-lg-3 col-md-4 col-6 mb-4 mb-lg-0">
-                    <h6 class="site-footer-title mb-3">Information</h6>
-                    <p class="text-white d-flex mb-1">
-                        <a href="tel: 305-240-9671" class="site-footer-link">
-                            305-240-9671
-                        </a>
-                    </p>
-                    <p class="text-white d-flex">
-                        <a href="mailto:info@company.com" class="site-footer-link">
-                            info@company.com
-                        </a>
-                    </p>
-                </div>
-
-                <div class="col-lg-3 col-md-4 col-12 mt-4 mt-lg-0 ms-auto">
-                    <div class="dropdown">
-                        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            English</button>
-                        <ul class="dropdown-menu">
-                            <li><button class="dropdown-item" type="button">Thai</button></li>
-                            <li><button class="dropdown-item" type="button">Myanmar</button></li>
-                            <li><button class="dropdown-item" type="button">Arabic</button></li>
-                        </ul>
+        <section class="hero-section d-flex justify-content-center align-items-center" id="section_1">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-8 col-12 mx-auto">
+                        <h1 class="text-center">Domain Intelligence Tool</h1>
+                        <h6 class="text-center">Comprehensive analysis of domains with WHOIS, subdomain, security, and network insights.</h6>
+                        <form method="post" class="custom-form mt-4 pt-2 mb-lg-0 mb-5" role="search" id="domainSearchForm">
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bi-search" id="basic-addon1"></span>
+                                <input name="domain" type="search" class="form-control" id="domainInput" placeholder="Enter domain (e.g., example.com)" aria-label="Search">
+                                <button type="submit" class="form-control">Analyze</button>
+                            </div>
+                        </form>
                     </div>
-                    <p class="copyright-text mt-lg-5 mt-4">Copyright © 2025 Domain Intelligence Tool. All rights reserved.</p>
                 </div>
             </div>
-        </div>
-    </footer>
+        </section>
 
-    <!-- Scripts -->
+        <section class="featured-section">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-lg-4 col-12 mb-4 mb-lg-0">
+                        <div class="custom-block glass-effect">
+                            <a href="#section_2">
+                                <div class="d-flex">
+                                    <div>
+                                        <h5 class="mb-2">WHOIS Analysis</h5>
+                                        <p class="mb-0">Access detailed domain ownership, registrar, and registration data instantly.</p>
+                                    </div>
+                                </div>
+                                <img src="/static/images/topics/image-removebg-preview (6).png" class="custom-block-image img-fluid" alt="WHOIS Analysis" style="height: 290px; width: auto; vertical-align: middle;">
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 col-12">
+                        <div class="custom-block custom-block-overlay glass-effect">
+                            <div class="d-flex flex-column h-100">
+                                <img src="/static/images/topics/Domain Ownership.png" class="custom-block-image img-fluid" alt="Security Insights">
+                                <div class="custom-block-overlay-text d-flex">
+                                    <div>
+                                        <h5 class="text-white mb-2">Security Insights</h5>
+                                        <p class="text-white">Evaluate SSL certificates, security headers, and vulnerabilities for any domain.</p>
+                                        <a href="#section_2" class="btn custom-btn mt-2 mt-lg-3">Learn More</a>
+                                    </div>
+                                </div>
+                                <div class="social-share d-flex">
+                                    <p class="text-white me-4">Share:</p>
+                                    <ul class="social-icon">
+                                        <li class="social-icon-item">
+                                            <a href="https://twitter.com/intent/tweet?text=Check%20out%20this%20Domain%20Intelligence%20Tool!" class="social-icon-link bi-twitter"></a>
+                                        </li>
+                                        <li class="social-icon-item">
+                                            <a href="https://www.facebook.com/sharer/sharer.php?u=https://yourdomain.com" class="social-icon-link bi-facebook"></a>
+                                        </li>
+                                        <li class="social-icon-item">
+                                            <a href="https://www.linkedin.com/shareArticle?mini=true&url=https://yourdomain.com" class="social-icon-link bi-linkedin"></a>
+                                        </li>
+                                    </ul>
+                                    <a href="#" class="custom-icon bi-bookmark ms-auto"></a>
+                                </div>
+                                <div class="section-overlay"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="explore-section section-padding" id="section_2">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12 text-center">
+                        <h2 class="mb-4" style="color: var(--metallic-gold); font-family: 'Orbitron', monospace;">Explore Domain Insights</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="container-fluid">
+                <div class="row">
+                    <ul class="nav nav-tabs" id="myTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="whois-tab" data-bs-toggle="tab" data-bs-target="#whois-tab-pane" type="button" role="tab" aria-controls="whois-tab-pane" aria-selected="true">WHOIS Data</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="subdomains-tab" data-bs-toggle="tab" data-bs-target="#subdomains-tab-pane" type="button" role="tab" aria-controls="subdomains-tab-pane" aria-selected="false">Subdomains</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security-tab-pane" type="button" role="tab" aria-controls="security-tab-pane" aria-selected="false">Security</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="network-tab" data-bs-toggle="tab" data-bs-target="#network-tab-pane" type="button" role="tab" aria-controls="network-tab-pane" aria-selected="false">Network Analysis</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="technologies-tab" data-bs-toggle="tab" data-bs-target="#technologies-tab-pane" type="button" role="tab" aria-controls="technologies-tab-pane" aria-selected="false">Technologies</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="tab-content" id="myTabContent">
+                            <div class="tab-pane fade show active" id="whois-tab-pane" role="tabpanel" aria-labelledby="whois-tab" tabindex="0">
+                                <div class="row">
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-0">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Domain Ownership</h5>
+                                                        <p class="mb-0">Access registrant, admin, and contact details.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Domain Ownership.png" class="custom-block-image img-fluid" alt="Domain Ownership" style="height: 200px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-0">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Registrar Info</h5>
+                                                        <p class="mb-0">View registrar details and domain status.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Registrar Info.png" class="custom-block-image img-fluid" alt="Registrar Info" style="height: 280px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Registration Dates</h5>
+                                                        <p class="mb-0">Check creation, update, and expiration dates.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Registration Dates.png" class="custom-block-image img-fluid" alt="Registration Dates" style="height: 260px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="subdomains-tab-pane" role="tabpanel" aria-labelledby="subdomains-tab" tabindex="0">
+                                <div class="row">
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-3">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Active Subdomains</h5>
+                                                        <p class="mb-0">Discover all active subdomains for a domain.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Active Subdomains.png" class="custom-block-image img-fluid" alt="Active Subdomains" style="height: 260px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-3">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Subdomain Activity</h5>
+                                                        <p class="mb-0">Monitor recent changes and subdomain activity.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Subdomain Activity.png" class="custom-block-image img-fluid" alt="Subdomain Activity" style="height: 260px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Subdomain Mapping</h5>
+                                                        <p class="mb-0">Map subdomains to their IP addresses.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Subdomain Mapping.png" class="custom-block-image img-fluid" alt="Subdomain Mapping" style="height: 260px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="security-tab-pane" role="tabpanel" aria-labelledby="security-tab" tabindex="0">
+                                <div class="row">
+                                    <div class="col-lg-6 col-md-6 col-12 mb-4 mb-lg-0">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">SSL Certificates</h5>
+                                                        <p class="mb-0">Review SSL/TLS certificate details and validity.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/SSL Certificates.png" class="custom-block-image img-fluid" alt="SSL Certificates" style="height: 280px; width: auto; vertical-align: middle; margin-left: 100px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-6 col-md-6 col-12">
+                                        <div class="custom-block custom-block-overlay glass-effect">
+                                            <div class="d-flex flex-column h-100">
+                                                <img src="/static/images/topics/Security Headers.png" class="custom-block-image img-fluid" alt="Security Analysis" style="height: 260px; width: auto; vertical-align: middle; margin-top: 32.8%;">
+                                                <div class="custom-block-overlay-text d-flex">
+                                                    <div>
+                                                        <h5 class="text-white mb-2">Security Headers</h5>
+                                                        <p class="text-white">Check HTTP headers like CSP, HSTS, and X-Frame-Options.</p>
+                                                        <a href="#section_2" class="btn custom-btn mt-2 mt-lg-3">Learn More</a>
+                                                    </div>
+                                                </div>
+                                                <div class="social-share d-flex">
+                                                    <p class="text-white me-4">Share:</p>
+                                                    <ul class="social-icon">
+                                                        <li class="social-icon-item">
+                                                            <a href="https://twitter.com/intent/tweet?text=Check%20out%20this%20Domain%20Intelligence%20Tool!" class="social-icon-link bi-twitter"></a>
+                                                        </li>
+                                                        <li class="social-icon-item">
+                                                            <a href="https://www.facebook.com/sharer/sharer.php?u=https://yourdomain.com" class="social-icon-link bi-facebook"></a>
+                                                        </li>
+                                                        <li class="social-icon-item">
+                                                            <a href="https://www.linkedin.com/shareArticle?mini=true&url=https://yourdomain.com" class="social-icon-link bi-linkedin"></a>
+                                                        </li>
+                                                    </ul>
+                                                    <a href="#" class="custom-icon bi-bookmark ms-auto"></a>
+                                                </div>
+                                                <div class="section-overlay"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="network-tab-pane" role="tabpanel" aria-labelledby="network-tab" tabindex="0">
+                                <div class="row">
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-3">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">DNS Records</h5>
+                                                        <p class="mb-0">Explore A, MX, TXT, and other DNS records.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/DNS Records.png" class="custom-block-image img-fluid" alt="DNS Records">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12 mb-4 mb-lg-3">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Traceroute</h5>
+                                                        <p class="mb-0">Analyze network paths and latency.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Traceroute.png" class="custom-block-image img-fluid" alt="Traceroute" style="height: 180px; width: auto; vertical-align: middle; margin-right: 10px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Open Ports</h5>
+                                                        <p class="mb-0">Identify open ports and running services.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Open Ports.png" class="custom-block-image img-fluid" alt="Open Ports">
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="technologies-tab-pane" role="tabpanel" aria-labelledby="technologies-tab" tabindex="0">
+                                <div class="row">
+                                    <div class="col-lg-6 col-md-6 col-12 mb-4 mb-lg-3">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Web Technologies</h5>
+                                                        <p class="mb-0">Detect CMS, frameworks, and libraries in use.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Web Technologies.png" class="custom-block-image img-fluid" alt="Web Technologies">
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-6 col-md-6 col-12">
+                                        <div class="custom-block glass-effect">
+                                            <a href="#section_2">
+                                                <div class="d-flex">
+                                                    <div>
+                                                        <h5 class="mb-2">Server Software</h5>
+                                                        <p class="mb-0">Identify server software and version details.</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/static/images/topics/Server Software.png" class="custom-block-image img-fluid" alt="Server Software" style="height: 260px; width: auto; vertical-align: middle; margin-right: 10px; margin-left: 60px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="timeline-section section-padding" id="section_3">
+            <div class="section-overlay"></div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-12 text-center">
+                        <h2 class="text-white mb-3" style="font-family: 'Orbitron', monospace;">How Domain Intelligence Works</h2>
+                    </div>
+                    <div class="col-lg-10 col-12 mx-auto">
+                        <div class="timeline-container">
+                            <ul class="vertical-scrollable-timeline" id="vertical-vertical-timeline">
+                                <div class="list-progress">
+                                    <div class="inner"></div>
+                                </div>
+                                <li>
+                                    <h4 class="text-white mb-3">Enter a Domain</h4>
+                                    <p class="text-white">Input any domain name into our search bar to begin analyzing its details.</p>
+                                    <div class="icon-holder">
+                                        <i class="bi bi-search"></i>
+                                    </div>
+                                </li>
+                                <li>
+                                    <h4 class="text-white mb-3">Review Insights</h4>
+                                    <p class="text-white">Access comprehensive reports on WHOIS, subdomains, security, and network data.</p>
+                                    <div class="icon-holder">
+                                        <i class="bi bi-eye"></i>
+                                    </div>
+                                </li>
+                                <li>
+                                    <h4 class="text-white mb-3">Take Action</h4>
+                                    <p class="text-white">Use insights for cybersecurity, compliance, or competitive analysis.</p>
+                                    <div class="icon-holder">
+                                        <i class="bi bi-gear"></i>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Report Section (Hidden by default) -->
+        <section class="report-section" id="reportSection" style="display: none;">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="text-center mb-4">
+                            <h1 id="reportTitle" style="color: var(--metallic-gold); font-family: 'Orbitron', monospace;"></h1>
+                            <button class="btn download-btn mt-3" id="downloadBtn">
+                                <i class="bi bi-download me-2"></i>Download PDF Report
+                            </button>
+                        </div>
+                        <div id="reportContent"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- JAVASCRIPT -->
     <script src="/static/js/jquery.min.js"></script>
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/jquery.sticky.js"></script>
     <script src="/static/js/click-scroll.js"></script>
     <script src="/static/js/custom.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/map.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/geodata/worldLow.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
-    <script src="/sloader.js"></script>
+    <script src="/static/js/sloader.js"></script>
 
     <script>
+        // Global variables
         let currentDomain = '';
-        let mapChart = null;
+        let currentData = null;
+        let worldMap = null;
 
-        // Create floating particles
-        function createParticles() {
-            const particlesContainer = document.getElementById('particles');
-            const particleCount = 50;
+        // Validate domain input
+        function isValidDomain(domain) {
+            const domainRegex = /^(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})$/;
+            return domainRegex.test(domain);
+        }
 
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = Math.random() * 100 + '%';
-                particle.style.animationDelay = Math.random() * 6 + 's';
-                particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
-                particlesContainer.appendChild(particle);
+        // Handle form submission
+        document.getElementById('domainSearchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const domainInput = document.getElementById('domainInput');
+            const domain = domainInput.value.trim().toLowerCase();
+            
+            if (!domain) {
+                alert('Please enter a domain to analyze.');
+                return;
+            }
+            
+            if (!isValidDomain(domain)) {
+                alert('Please enter a valid domain (e.g., example.com).');
+                return;
+            }
+
+            currentDomain = domain;
+            await analyzeDomain(domain);
+        });
+
+        // Analyze domain function
+        async function analyzeDomain(domain) {
+            try {
+                // Show loading state
+                showLoading(domain);
+                
+                // Fetch data from API
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ domain: domain })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                currentData = data;
+                displayReport(data);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message);
             }
         }
 
-        // Initialize particles
-        createParticles();
+        // Show loading state
+        function showLoading(domain) {
+            const reportSection = document.getElementById('reportSection');
+            const reportContent = document.getElementById('reportContent');
+            const reportTitle = document.getElementById('reportTitle');
+            
+            reportTitle.textContent = `Analyzing ${domain}...`;
+            reportContent.innerHTML = `
+                <div class="loading">
+                    <h3>Loading comprehensive analysis for ${domain}</h3>
+                    <p>This may take a few moments as we gather data from multiple sources...</p>
+                </div>
+            `;
+            
+            reportSection.style.display = 'block';
+            reportSection.scrollIntoView({ behavior: 'smooth' });
+        }
 
-        // Initialize amCharts map
-        function initializeMap() {
+        // Show error state
+        function showError(message) {
+            const reportContent = document.getElementById('reportContent');
+            const reportTitle = document.getElementById('reportTitle');
+            
+            reportTitle.textContent = 'Analysis Error';
+            reportContent.innerHTML = `
+                <div class="error">
+                    <h3>Error occurred during analysis</h3>
+                    <p>${message}</p>
+                    <button class="btn btn-primary mt-3" onclick="location.reload()">Try Again</button>
+                </div>
+            `;
+        }
+
+        // Function to safely render data
+        function safeRender(value) {
+            if (value == null || value === undefined) return 'N/A';
+            if (typeof value === 'object') return JSON.stringify(value);
+            return String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // Display report function
+        function displayReport(data) {
+            const reportTitle = document.getElementById('reportTitle');
+            const reportContent = document.getElementById('reportContent');
+            
+            reportTitle.textContent = `Domain Analysis Report: ${data.domain}`;
+            
+            let html = `
+                <!-- Domain Overview -->
+                <div class="report-section glass-effect">
+                    <h3><i class="bi bi-globe me-2"></i>Domain Overview</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-dark">
+                                <tr><th>Domain</th><td>${safeRender(data.domain)}</td></tr>
+                                <tr><th>Status</th><td><span class="status-secure">Active</span></td></tr>
+                                <tr><th>Analysis Date</th><td>${new Date().toLocaleString()}</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <div id="chartdiv"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IP Addresses & Geolocation -->
+                <div class="report-section glass-effect">
+                    <h3><i class="bi bi-geo-alt me-2"></i>IP Addresses & Geolocation</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>IP Addresses</h5>
+                            <table class="table table-dark">
+                                <thead><tr><th>IP Address</th><th>Type</th></tr></thead>
+                                <tbody>
+                                    ${data.ip_addresses ? data.ip_addresses.map(ip => `
+                                        <tr><td>${safeRender(ip)}</td><td>IPv4</td></tr>
+                                    `).join('') : '<tr><td colspan="2">No IP addresses found</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Geolocation Data</h5>
+                            <table class="table table-dark">
+                                <thead><tr><th>IP</th><th>Country</th><th>City</th><th>ISP</th></tr></thead>
+                                <tbody>
+                                    ${data.geolocation ? data.geolocation.map(geo => `
+                                        <tr>
+                                            <td>${safeRender(geo.ip)}</td>
+                                            <td>${safeRender(geo.country)}</td>
+                                            <td>${safeRender(geo.city)}</td>
+                                            <td>${safeRender(geo.org)}</td>
+                                        </tr>
+                                    `).join('') : '<tr><td colspan="4">No geolocation data available</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WHOIS Information -->
+                <div class="report-section glass-effect">
+                    <h3><i class="bi bi-info-circle me-2"></i>WHOIS Information</h3>
+                    <table class="table table-dark">
+                        <tr><th>Registrar</th><td>${safeRender(data.whois_info?.registrar)}</td></tr>
+                        <tr><th>Creation Date</th><td>${safeRender(data.whois_info?.creation_date)}</td></tr>
+                        <tr><th>Expiration Date</th><td>${safeRender(data.whois_info?.expiration_date)}</td></tr>
+                        <tr><th>Name Servers</th><td>${data.whois_info?.name_servers ? data.whois_info.name_servers.join(', ') : 'N/A'}</td></tr>
+                        <tr><th>Status</th><td>${safeRender(data.whois_info?.status)}</td></tr>
+                    </table>
+                </div>
+
+                <!-- DNS Records -->
+                <div class="report-section glass-effect">
+                    <h3><i class="bi bi-dns me-2"></i>DNS Records</h3>
+                    <div class="row">
+                        ${Object.entries(data.dns_records || {}).map(([type, records]) => `
+                            <div class="col-md-6 mb-3">
+                                <h5>${type} Records</h5>
+                                <ul>
+                                    ${Array.isArray(records) ? records.map(record => `<li>${safeRender(record)}</li>`).join('') : '<li>No records found</li>'}
+                                </ul>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Subdomains -->
+                <div class="report-section glass-effect">
+                    <h3><i class="bi bi-diagram-3 me-2"></i>Subdomains</h3>
+                    <div class="row">
+                        <div class="col-12">
+                            <ul>
+                                ${data.subdomains && data.subdomains.length ? data.subdomains.map(sub => `<li>${safeRender(sub)}</li>`).join('') : '<li>No subdomains found</li>'}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SSL Certificate -->
+                <div class="report-section glass-effect">
+                    <h3><i class="bi bi-shield-check me-2"></i>SSL Certificate</h3>
+                    <table class="table table-dark">
+                        <tr><th>Subject</th><td>${data.ssl_info?.subject ? JSON.stringify(data.ssl_info.subject) : 'N/A'}</td></tr>
+                        <tr><th>Issuer</th><td>${data.ssl_info?.issuer ? JSON.stringify(data.ssl_info.issuer) : 'N/A'}</td></tr>
+                        <tr><th>Valid From</th><td>${safeRender(data.ssl_info?.not_before)}</td></tr>
+                        <tr><th>Valid Until</th><td>${safeRender(data.ssl_info?.not_after)}</td></tr>
+                        <tr><th>Serial Number</th><td>${safeRender(data.ssl_info?.serial_number)}</td></tr>
+                    </table>
+                </div>
+
+                <!-- Open Ports -->
+                <div class="report-section glass-effect">
+                    <h3><i class="bi bi-door-open me-2"></i>Open Ports</h3>
+                    <table class="table table-dark">
+                        <thead><tr><th>IP</th><th>Port</th><th>Service</th><th>Version</th></tr></thead>
+                        <tbody>
+                            ${data.open_ports && data.open_ports.length ? data.open_ports.map(port => `
+                                <tr>
+                                    <td>${safeRender(port.ip)}</td>
+                                    <td>${safeRender(port.port)}</td>
+                                    <td>${safeRender(port.service)}</td>
+                                    <td>${safeRender(port.version)}</td>
+                                </tr>
+                            `).join('') : '<tr><td colspan="4">No open ports detected</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Security Headers -->
+                <div class="report-section glass-effect">
+                    <h3><i class="bi bi-shield-lock me-2"></i>Security Headers</h3>
+                    <table class="table table-dark">
+                        ${Object.entries(data.security_headers || {}).map(([header, value]) => `
+                            <tr>
+                                <th>${header}</th>
+                                <td>
+                                    ${value === 'Not Set' ? '<span class="status-danger">Not Set</span>' : `<span class="status-secure">${safeRender(value)}</span>`}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                </div>
+
+                <!-- Technologies -->
+                <div class="report-section glass-effect">
+                    <h3><i class="bi bi-gear me-2"></i>Detected Technologies</h3>
+                    <ul>
+                        ${data.technologies && data.technologies.length ? data.technologies.map(tech => `<li>${safeRender(tech)}</li>`).join('') : '<li>No technologies detected</li>'}
+                    </ul>
+                </div>
+
+                <!-- Network Topology -->
+                <div class="report-section glass-effect">
+                    <h3><i class="bi bi-diagram-2 me-2"></i>Network Topology</h3>
+                    <div id="networkGraph" style="height: 400px;"></div>
+                </div>
+            `;
+            
+            reportContent.innerHTML = html;
+            
+            // Initialize visualizations
+            setTimeout(() => {
+                initializeMap(data);
+                initializeNetworkGraph(data);
+            }, 100);
+        }
+
+        // Initialize world map
+        function initializeMap(data) {
+            if (!data.geolocation || !data.geolocation.length) return;
+
             // Create root element
-            var root = am5.Root.new("chartdiv");
+            const root = am5.Root.new("chartdiv");
 
             // Set themes
             root.setThemes([
-                am5themes_Animated.new(root)
+                am5themes_Animated.new(root),
+                am5themes_Dark.new(root)
             ]);
 
             // Create the map chart
-            var chart = root.container.children.push(am5map.MapChart.new(root, {
+            const chart = root.container.children.push(am5map.MapChart.new(root, {
                 panX: "rotateX",
                 panY: "rotateY",
                 projection: am5map.geoOrthographic(),
@@ -989,74 +1156,45 @@
                 paddingRight: 20
             }));
 
-            // Enable rotation
-            chart.set("rotationX", 0);
-            chart.set("rotationY", 0);
-
             // Create main polygon series for countries
-            var polygonSeries = chart.series.push(am5map.MapPolygonSeries.new(root, {
-                geoJSON: am5geodata_worldLow 
+            const polygonSeries = chart.series.push(am5map.MapPolygonSeries.new(root, {
+                geoJSON: am5geodata_worldLow
             }));
 
             polygonSeries.mapPolygons.template.setAll({
                 tooltipText: "{name}",
                 toggleKey: "active",
                 interactive: true,
-                fill: am5.color("#2a2a2a"),
-                stroke: am5.color("#00ffff"),
-                strokeWidth: 0.5
-            }));
+                fill: am5.color("#2a2a2a")
+            });
 
             polygonSeries.mapPolygons.template.states.create("hover", {
-                fill: am5.color("#00ffff"),
-                fillOpacity: 0.3
+                fill: am5.color("#00ffff")
             });
 
             // Create series for background fill
-            var backgroundSeries = chart.series.push(am5map.MapPolygonSeries.new(root, {}));
+            const backgroundSeries = chart.series.push(am5map.MapPolygonSeries.new(root, {}));
             backgroundSeries.mapPolygons.template.setAll({
                 fill: am5.color("#0a0a0a"),
-                fillOpacity: 1,
+                fillOpacity: 0.8,
                 strokeOpacity: 0
             });
             backgroundSeries.data.push({
                 geometry: am5map.getGeoRectangle(90, 180, -90, -180)
             });
 
-            var graticuleSeries = chart.series.unshift(
+            // Add graticule
+            const graticuleSeries = chart.series.unshift(
                 am5map.GraticuleSeries.new(root, {
                     step: 10
                 })
             );
-
             graticuleSeries.mapLines.template.set("strokeOpacity", 0.1);
-            graticuleSeries.mapLines.template.set("stroke", am5.color("#39ff14"));
 
-            // Make the globe rotatable
-            chart.chartContainer.onPrivate("maskRectangle", function() {
-                chart.plotContainer.onPrivate("maskRectangle", function() {
-                    chart.plotContainer.set("interactive", true);
-                });
-            });
-
-            // Store chart reference
-            mapChart = chart;
-
-            // Make stuff animate on load
-            chart.appear(1000, 100);
-
-            return chart;
-        }
-
-        // Add location markers to map
-        function addLocationMarkers(locations) {
-            if (!mapChart || !locations) return;
-
-            // Create point series for markers
-            var pointSeries = mapChart.series.push(am5map.MapPointSeries.new(mapChart.root, {}));
-
+            // Add point series for locations
+            const pointSeries = chart.series.push(am5map.MapPointSeries.new(root, {}));
             pointSeries.bullets.push(function() {
-                var circle = am5.Circle.new(mapChart.root, {
+                const circle = am5.Circle.new(root, {
                     radius: 8,
                     tooltipText: "{title}",
                     fill: am5.color("#39ff14"),
@@ -1064,187 +1202,98 @@
                     strokeWidth: 2
                 });
 
-                circle.states.create("hover", {
-                    radius: 12,
-                    fill: am5.color("#00ffff")
-                });
-
-                return am5.Bullet.new(mapChart.root, {
+                return am5.Bullet.new(root, {
                     sprite: circle
                 });
             });
 
-            // Add data points
-            var data = [];
-            locations.forEach(function(location) {
-                if (location.latitude && location.longitude) {
-                    data.push({
-                        geometry: { type: "Point", coordinates: [location.longitude, location.latitude] },
-                        title: location.ip + " - " + location.city + ", " + location.country
-                    });
-                }
-            });
+            // Add location data
+            const locationData = data.geolocation.map(geo => ({
+                geometry: { type: "Point", coordinates: [geo.longitude, geo.latitude] },
+                title: `${geo.ip}\n${geo.city}, ${geo.country}\n${geo.org}`
+            }));
 
-            pointSeries.data.setAll(data);
+            pointSeries.data.setAll(locationData);
+
+            // Make stuff animate on load
+            chart.appear(1000, 100);
+
+            // Store reference
+            worldMap = chart;
         }
 
-        // Handle Enter key in search input
-        document.getElementById('keyword').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                analyzeDomain();
+        // Initialize network graph
+        function initializeNetworkGraph(data) {
+            if (!data.network_map || !data.network_map.nodes) return;
+
+            const container = document.getElementById('networkGraph');
+            if (!container) return;
+
+            const nodes = new vis.DataSet(data.network_map.nodes.map(node => ({
+                ...node,
+                color: {
+                    background: node.color,
+                    border: '#00ffff',
+                    highlight: {
+                        background: '#39ff14',
+                        border: '#00ffff'
+                    }
+                },
+                font: { color: '#e0e0e0' }
+            })));
+
+            const edges = new vis.DataSet(data.network_map.edges.map(edge => ({
+                ...edge,
+                color: { color: '#00ffff' },
+                font: { color: '#e0e0e0' }
+            })));
+
+            const graphData = { nodes: nodes, edges: edges };
+            
+            const options = {
+                layout: {
+                    hierarchical: {
+                        direction: 'UD',
+                        sortMethod: 'directed'
+                    }
+                },
+                edges: {
+                    arrows: 'to',
+                    color: '#00ffff'
+                },
+                nodes: {
+                    shape: 'dot',
+                    size: 20,
+                    font: {
+                        size: 14,
+                        color: '#e0e0e0'
+                    }
+                },
+                physics: {
+                    enabled: true,
+                    stabilization: { iterations: 100 }
+                }
+            };
+
+            new vis.Network(container, graphData, options);
+        }
+
+        // Download PDF report
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            if (currentDomain) {
+                window.open(`/download_report/${encodeURIComponent(currentDomain)}`, '_blank');
             }
         });
 
-        function analyzeDomain() {
-            const domain = document.getElementById('keyword').value.trim();
-            if (!domain) {
-                alert('Please enter a domain name');
-                return;
+        // Load report if on report route
+        window.addEventListener('load', () => {
+            const path = window.location.pathname;
+            const reportMatch = path.match(/^\/report\/(.+)/);
+            if (reportMatch) {
+                const domain = decodeURIComponent(reportMatch[1]);
+                document.getElementById('domainInput').value = domain;
+                analyzeDomain(domain);
             }
-
-            currentDomain = domain;
-            
-            // Show loading spinner
-            document.getElementById('loadingSpinner').style.display = 'block';
-            document.getElementById('resultsContainer').style.display = 'none';
-
-            // Initialize map if not already done
-            if (!mapChart) {
-                initializeMap();
-            }
-
-            // Make API request
-            fetch('/analyze', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ domain: domain })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                displayResults(data);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error analyzing domain: ' + error.message);
-            })
-            .finally(() => {
-                document.getElementById('loadingSpinner').style.display = 'none';
-            });
-        }
-
-        function displayResults(data) {
-            // Show results container
-            document.getElementById('resultsContainer').style.display = 'block';
-            document.getElementById('downloadBtn').style.display = 'inline-flex';
-
-            // Domain Overview
-            displayDomainOverview(data);
-            
-            // Geolocation
-            displayGeolocation(data);
-
-            // Add markers to map
-            if (data.geolocation) {
-                addLocationMarkers(data.geolocation);
-            }
-
-            // Scroll to results
-            document.getElementById('resultsContainer').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function displayDomainOverview(data) {
-            const container = document.getElementById('domainOverview');
-            container.innerHTML = `
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <div class="glass-effect p-3 rounded">
-                            <h6 style="color: var(--neon-blue);">Domain</h6>
-                            <p style="color: var(--text-light); margin: 0;">${data.domain}</p>
-                        </div>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <div class="glass-effect p-3 rounded">
-                            <h6 style="color: var(--neon-blue);">IP Addresses</h6>
-                            <p style="color: var(--text-light); margin: 0;">${data.ip_addresses.length}</p>
-                        </div>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <div class="glass-effect p-3 rounded">
-                            <h6 style="color: var(--neon-blue);">Subdomains</h6>
-                            <p style="color: var(--text-light); margin: 0;">${data.subdomains.length}</p>
-                        </div>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <div class="glass-effect p-3 rounded">
-                            <h6 style="color: var(--neon-blue);">Open Ports</h6>
-                            <p style="color: var(--text-light); margin: 0;">${data.open_ports.length}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function displayGeolocation(data) {
-            const container = document.getElementById('locationTable');
-            
-            if (data.geolocation && data.geolocation.length > 0) {
-                let tableHTML = `
-                    <div class="table-responsive mb-4">
-                        <table class="table table-dark">
-                            <thead>
-                                <tr>
-                                    <th>IP Address</th>
-                                    <th>Country</th>
-                                    <th>Region</th>
-                                    <th>City</th>
-                                    <th>Organization</th>
-                                    <th>ASN</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
-                
-                data.geolocation.forEach(geo => {
-                    tableHTML += `
-                        <tr>
-                            <td>${geo.ip}</td>
-                            <td>${geo.country}</td>
-                            <td>${geo.region}</td>
-                            <td>${geo.city}</td>
-                            <td>${geo.org}</td>
-                            <td>${geo.asn}</td>
-                        </tr>
-                    `;
-                });
-                
-                tableHTML += `
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                
-                container.innerHTML = tableHTML;
-            } else {
-                container.innerHTML = '<p style="color: var(--text-muted);">No geolocation data available</p>';
-            }
-        }
-
-        function downloadReport() {
-            if (currentDomain) {
-                window.open(`/download_report/${currentDomain}`, '_blank');
-            }
-        }
-
-        // Initialize map on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize map after a short delay to ensure DOM is ready
-            setTimeout(initializeMap, 500);
         });
     </script>
 </body>

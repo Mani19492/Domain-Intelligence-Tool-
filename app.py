@@ -26,16 +26,21 @@ from PIL import Image as PILImage
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
-import folium
-from folium import plugins
-import geoip2.database
-import geoip2.errors
+import re
+from urllib.parse import urljoin
 
 app = Flask(__name__)
 
 # DNSDumpster API configuration
 DNSDUMPSTER_API_KEY = "e33c4c55e9caa8b2a0d64421ae1417fa40c05c118710286eb766d1c1e05d0a16"
 DNSDUMPSTER_BASE_URL = "https://dnsdumpster.com"
+
+# VirusTotal API configuration (you'll need to get your own API key)
+VIRUSTOTAL_API_KEY = "your_virustotal_api_key_here"
+VIRUSTOTAL_BASE_URL = "https://www.virustotal.com/vtapi/v2"
+
+# SecurityHeaders.com API
+SECURITYHEADERS_BASE_URL = "https://securityheaders.com"
 
 # Cache file for reverse IP lookups
 CACHE_FILE = 'reverse_ip_cache.pkl'
@@ -93,13 +98,110 @@ def get_ip_geolocation(ip):
         'timezone': 'Unknown'
     }
 
+def get_virustotal_data(domain):
+    """Get VirusTotal analysis data for domain"""
+    try:
+        if VIRUSTOTAL_API_KEY == "your_virustotal_api_key_here":
+            return {'error': 'VirusTotal API key not configured'}
+            
+        url = f"{VIRUSTOTAL_BASE_URL}/domain/report"
+        params = {
+            'apikey': VIRUSTOTAL_API_KEY,
+            'domain': domain
+        }
+        
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                'response_code': data.get('response_code', 0),
+                'positives': data.get('positives', 0),
+                'total': data.get('total', 0),
+                'scan_date': data.get('scan_date', 'Unknown'),
+                'scans': data.get('scans', {}),
+                'detected_urls': data.get('detected_urls', [])
+            }
+    except Exception as e:
+        print(f"Error getting VirusTotal data: {e}")
+    
+    return {'error': 'VirusTotal data unavailable'}
+
+def get_security_headers_analysis(domain):
+    """Get security headers analysis from SecurityHeaders.com"""
+    try:
+        url = f"{SECURITYHEADERS_BASE_URL}/?q={domain}&followRedirects=on"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            # Parse the response for security headers grade
+            content = response.text
+            
+            # Extract grade (simplified parsing)
+            grade_match = re.search(r'class="grade-([A-F])"', content)
+            grade = grade_match.group(1) if grade_match else 'Unknown'
+            
+            return {
+                'grade': grade,
+                'url': url,
+                'analysis_available': True
+            }
+    except Exception as e:
+        print(f"Error getting security headers analysis: {e}")
+    
+    return {'error': 'Security headers analysis unavailable'}
+
+def get_wayback_machine_data(domain):
+    """Get Wayback Machine snapshots for domain"""
+    try:
+        url = f"http://web.archive.org/cdx/search/cdx?url={domain}&output=json&limit=10"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if len(data) > 1:  # First row is headers
+                snapshots = []
+                for row in data[1:]:  # Skip header row
+                    snapshots.append({
+                        'timestamp': row[1],
+                        'url': row[2],
+                        'status': row[4],
+                        'archived_url': f"http://web.archive.org/web/{row[1]}/{row[2]}"
+                    })
+                return snapshots
+    except Exception as e:
+        print(f"Error getting Wayback Machine data: {e}")
+    
+    return []
+
+def get_threat_intelligence(domain):
+    """Get threat intelligence data from multiple sources"""
+    threats = []
+    
+    try:
+        # Check against known malicious domain lists (simplified)
+        malicious_indicators = [
+            'suspicious', 'malware', 'phishing', 'spam', 'botnet'
+        ]
+        
+        # This is a simplified example - in production you'd use real threat intel APIs
+        for indicator in malicious_indicators:
+            if indicator in domain.lower():
+                threats.append(f"Domain contains suspicious keyword: {indicator}")
+        
+        # Add more threat intelligence sources here
+        
+    except Exception as e:
+        print(f"Error getting threat intelligence: {e}")
+    
+    return threats if threats else ['No threats detected']
+
 def query_dnsdumpster(domain):
     """Query DNSDumpster API for domain information"""
     try:
-        # DNSDumpster web scraping approach since API is not publicly available
-        import re
-        from urllib.parse import urljoin
-        
+        # DNSDumpster web scraping approach
         session = requests.Session()
         url = f"{DNSDUMPSTER_BASE_URL}/"
         
@@ -127,9 +229,24 @@ def query_dnsdumpster(domain):
                 subdomains = re.findall(r'([a-zA-Z0-9.-]+\.' + re.escape(domain) + r')', response.text)
                 unique_subdomains = list(set(subdomains))
                 
+                # Parse DNS records
+                dns_records = []
+                dns_pattern = r'(\d+\.\d+\.\d+\.\d+)\s+([a-zA-Z0-9.-]+\.' + re.escape(domain) + r')'
+                dns_matches = re.findall(dns_pattern, response.text)
+                
+                for ip, subdomain in dns_matches:
+                    dns_records.append({
+                        'ip': ip,
+                        'subdomain': subdomain,
+                        'type': 'A'
+                    })
+                
                 return {
                     'subdomains': unique_subdomains,
-                    'status': 'success'
+                    'dns_records': dns_records,
+                    'Referrer-Policy': headers.get('Referrer-Policy', 'Not Set'),
+                    'Permissions-Policy': headers.get('Permissions-Policy', 'Not Set'),
+                    'Cross-Origin-Embedder-Policy': headers.get('Cross-Origin-Embedder-Policy', 'Not Set')
                 }
         else:
             print("Could not get CSRF token from DNSDumpster")
@@ -153,10 +270,26 @@ def get_domain_info(domain):
         'security_headers': {},
         'geolocation': [],
         'network_map': {},
-        'dnsdumpster_data': {}
+        'dnsdumpster_data': {},
+        'virustotal_data': {},
+        'wayback_data': [],
+        'threat_intelligence': [],
+        'security_analysis': {}
     }
     
     try:
+        # Get VirusTotal data
+        info['virustotal_data'] = get_virustotal_data(domain)
+        
+        # Get Wayback Machine data
+        info['wayback_data'] = get_wayback_machine_data(domain)
+        
+        # Get threat intelligence
+        info['threat_intelligence'] = get_threat_intelligence(domain)
+        
+        # Get security headers analysis
+        info['security_analysis'] = get_security_headers_analysis(domain)
+        
         # Query DNSDumpster for additional data
         dnsdumpster_result = query_dnsdumpster(domain)
         if dnsdumpster_result:
@@ -167,6 +300,10 @@ def get_domain_info(domain):
                 for subdomain in dnsdumpster_result['subdomains']:
                     if subdomain not in info['subdomains']:
                         info['subdomains'].append(subdomain)
+            
+            # Extract DNS records from DNSDumpster
+            if 'dns_records' in dnsdumpster_result:
+                info['dnsdumpster_dns'] = dnsdumpster_result['dns_records']
         
         # Get IP addresses
         try:
@@ -285,6 +422,10 @@ def get_domain_info(domain):
                 technologies.append('Angular')
             if 'vue' in content:
                 technologies.append('Vue.js')
+            if 'bootstrap' in content:
+                technologies.append('Bootstrap')
+            if 'jquery' in content:
+                technologies.append('jQuery')
             
             info['technologies'] = technologies
         except:
@@ -357,40 +498,6 @@ def create_network_map_data(info):
     
     return {'nodes': nodes, 'edges': edges}
 
-def create_location_map(geolocation_data):
-    """Create a folium map with IP locations"""
-    if not geolocation_data:
-        return None
-    
-    # Create base map centered on first location
-    first_location = geolocation_data[0]
-    m = folium.Map(
-        location=[first_location['latitude'], first_location['longitude']],
-        zoom_start=6,
-        tiles='CartoDB dark_matter'
-    )
-    
-    # Add markers for each IP location
-    for geo in geolocation_data:
-        if geo['latitude'] != 0 and geo['longitude'] != 0:
-            popup_text = f"""
-            <b>IP:</b> {geo['ip']}<br>
-            <b>Location:</b> {geo['city']}, {geo['region']}, {geo['country']}<br>
-            <b>Organization:</b> {geo['org']}<br>
-            <b>ASN:</b> {geo['asn']}
-            """
-            
-            folium.Marker(
-                [geo['latitude'], geo['longitude']],
-                popup=folium.Popup(popup_text, max_width=300),
-                tooltip=f"{geo['ip']} - {geo['city']}, {geo['country']}",
-                icon=folium.Icon(color='red', icon='info-sign')
-            ).add_to(m)
-    
-    # Save map to HTML string
-    map_html = m._repr_html_()
-    return map_html
-
 def generate_pdf_report(domain_info):
     """Generate PDF report of domain analysis"""
     buffer = io.BytesIO()
@@ -424,6 +531,16 @@ def generate_pdf_report(domain_info):
     story.append(Paragraph(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
     story.append(Spacer(1, 20))
     
+    # Executive Summary
+    story.append(Paragraph("Executive Summary", heading_style))
+    summary_text = f"""
+    This report provides a comprehensive analysis of the domain {domain_info['domain']}. 
+    The analysis includes WHOIS information, DNS records, SSL certificates, security headers, 
+    geolocation data, and threat intelligence assessment.
+    """
+    story.append(Paragraph(summary_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
     # IP Addresses
     story.append(Paragraph("IP Addresses", heading_style))
     if domain_info['ip_addresses']:
@@ -438,6 +555,35 @@ def generate_pdf_report(domain_info):
             ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
         ]))
         story.append(ip_table)
+    story.append(Spacer(1, 12))
+    
+    # VirusTotal Analysis
+    story.append(Paragraph("VirusTotal Analysis", heading_style))
+    if 'error' not in domain_info['virustotal_data']:
+        vt_data = [
+            ['Positives', str(domain_info['virustotal_data'].get('positives', 0))],
+            ['Total Scans', str(domain_info['virustotal_data'].get('total', 0))],
+            ['Scan Date', str(domain_info['virustotal_data'].get('scan_date', 'Unknown'))]
+        ]
+        vt_table = Table(vt_data)
+        vt_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(vt_table)
+    else:
+        story.append(Paragraph("VirusTotal data not available", styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Threat Intelligence
+    story.append(Paragraph("Threat Intelligence", heading_style))
+    if domain_info['threat_intelligence']:
+        for threat in domain_info['threat_intelligence']:
+            story.append(Paragraph(f"• {threat}", styles['Normal']))
     story.append(Spacer(1, 12))
     
     # Geolocation Information
@@ -468,6 +614,17 @@ def generate_pdf_report(domain_info):
             ('GRID', (0, 0), (-1, -1), 1, colors.black)
         ]))
         story.append(geo_table)
+    story.append(Spacer(1, 12))
+    
+    # Subdomains
+    story.append(Paragraph("Discovered Subdomains", heading_style))
+    if domain_info['subdomains']:
+        subdomain_text = ', '.join(domain_info['subdomains'][:20])  # Limit to first 20
+        if len(domain_info['subdomains']) > 20:
+            subdomain_text += f" ... and {len(domain_info['subdomains']) - 20} more"
+        story.append(Paragraph(subdomain_text, styles['Normal']))
+    else:
+        story.append(Paragraph("No subdomains discovered", styles['Normal']))
     story.append(Spacer(1, 12))
     
     # DNS Records
@@ -571,6 +728,12 @@ def generate_pdf_report(domain_info):
         story.append(Paragraph(tech_text, styles['Normal']))
     story.append(Spacer(1, 12))
     
+    # Security Analysis Summary
+    story.append(Paragraph("Security Analysis Summary", heading_style))
+    if 'error' not in domain_info['security_analysis']:
+        story.append(Paragraph(f"Security Headers Grade: {domain_info['security_analysis'].get('grade', 'Unknown')}", styles['Normal']))
+    story.append(Spacer(1, 12))
+    
     # Build PDF
     doc.build(story)
     buffer.seek(0)
@@ -609,10 +772,6 @@ def analyze_domain():
         
         # Get domain information
         domain_info = get_domain_info(domain)
-        
-        # Create location map
-        map_html = create_location_map(domain_info['geolocation'])
-        domain_info['location_map'] = map_html
         
         return jsonify(domain_info)
         
